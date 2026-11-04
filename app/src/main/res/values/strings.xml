@@ -101,6 +101,10 @@
     <string name="correction_choose">Choisir une action</string>
     <string name="correction_dismiss">Ignorer</string>
 
+    <!-- ===== Ambiguite : plusieurs actions possibles ===== -->
+    <string name="ambiguity_title">Vous voulez dire ?</string>
+    <string name="ambiguity_hint">« %1$s » peut correspondre à plusieurs actions. Choisissez : ce sera appris pour la prochaine fois.</string>
+
     <!-- ===== Pannes de la reconnaissance, affichees dans la carte d\'ecoute ===== -->
     <string name="speech_error_unavailable">Aucun moteur de reconnaissance vocale n\'est installé sur ce téléphone.</string>
     <string name="speech_error_microphone">L\'autorisation microphone a été refusée.</string>

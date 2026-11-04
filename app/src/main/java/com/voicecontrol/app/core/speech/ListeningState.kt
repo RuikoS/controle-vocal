@@ -1,5 +1,6 @@
 package com.voicecontrol.app.core.speech
 
+import com.voicecontrol.app.core.actions.VoiceAction
 import com.voicecontrol.app.core.actions.VoiceIntent
 
 /**
@@ -23,6 +24,8 @@ import com.voicecontrol.app.core.actions.VoiceIntent
  * @property unknownPhrase phrase qui n'a pas été comprise, à rattacher à une
  *           action par l'utilisateur. C'est la matière première de
  *           l'apprentissage.
+ * @property ambiguity phrase comprise à moitié, avec les actions les plus
+ *           probables à proposer.
  */
 data class ListeningState(
     val status: ListeningStatus = ListeningStatus.Idle,
@@ -35,6 +38,19 @@ data class ListeningState(
     val lastIntent: VoiceIntent? = null,
     val actionFailed: Boolean = false,
     val unknownPhrase: String? = null,
+    val ambiguity: Ambiguity? = null,
+)
+
+/**
+ * Une phrase à moitié comprise.
+ *
+ * @property phrase ce qui a été entendu.
+ * @property options les actions les plus probables, de la plus probable à la
+ *           moins probable. L'utilisateur tranche ; son choix vaut apprentissage.
+ */
+data class Ambiguity(
+    val phrase: String,
+    val options: List<VoiceAction>,
 )
 
 /** Étape courante de la boucle d'écoute. */

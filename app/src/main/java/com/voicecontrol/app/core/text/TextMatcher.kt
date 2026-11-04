@@ -97,6 +97,60 @@ object TextMatcher {
     }
 
     /**
+     * Degré de ressemblance entre deux phrases, de 0 (rien à voir) à 1 (identique).
+     *
+     * Quatre mesures, dont on garde la meilleure, parce qu'elles échouent sur des
+     * cas différents :
+     *  - l'égalité, évidemment ;
+     *  - l'inclusion, qui gère les mots parasites (« le retour » / « retour ») ;
+     *  - la distance d'édition, qui gère les fautes de transcription ;
+     *  - le recouvrement de trigrammes, qui gère les formes proches malgré un
+     *    ordre différent.
+     *
+     * Aucun modèle de langage n'est nécessaire : ces mesures sont calculables en
+     * quelques microsecondes et couvrent l'essentiel des variantes réelles.
+     */
+    fun similarity(left: String, right: String): Float {
+        val a = normalize(left)
+        val b = normalize(right)
+        if (a.isBlank() || b.isBlank()) return 0f
+        if (a == b) return 1f
+
+        val longest = maxOf(a.length, b.length)
+        val shortest = minOf(a.length, b.length)
+
+        // Inclusion : on reste prudent quand le plus court est noyé dans une
+        // longue phrase, sinon « accueil » déclencherait sur n'importe quelle
+        // conversation.
+        if (a.contains(b) || b.contains(a)) {
+            val ratio = shortest.toFloat() / longest
+            return 0.6f + 0.35f * ratio
+        }
+
+        val editScore = 1f - levenshtein(a, b).toFloat() / longest
+        return maxOf(editScore, trigramScore(a, b))
+    }
+
+    /** Recouvrement des trigrammes de caractères (coefficient de Dice). */
+    private fun trigramScore(left: String, right: String): Float {
+        val leftGrams = trigrams(left)
+        val rightGrams = trigrams(right)
+        if (leftGrams.isEmpty() || rightGrams.isEmpty()) return 0f
+
+        val common = leftGrams.count { it in rightGrams }
+        return 2f * common / (leftGrams.size + rightGrams.size)
+    }
+
+    /**
+     * Les trigrammes sont calculés sur le texte encadré d'espaces : les débuts et
+     * fins de mots comptent ainsi comme des éléments à part entière.
+     */
+    private fun trigrams(text: String): Set<String> {
+        val padded = "  $text "
+        return (0..padded.length - 3).map { padded.substring(it, it + 3) }.toSet()
+    }
+
+    /**
      * Nombre de caractères à ajouter, retirer ou remplacer pour passer d'un
      * texte à l'autre.
      *

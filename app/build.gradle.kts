@@ -27,7 +27,7 @@ android {
         // Affiché en bas de l'écran d'accueil : une application installée à la
         // main n'a aucune vitrine pour dire de quelle version il s'agit, et on
         // finit par tester une ancienne sans le savoir.
-        versionName = "0.12.0"
+        versionName = "0.13.0"
     }
 
     buildTypes {

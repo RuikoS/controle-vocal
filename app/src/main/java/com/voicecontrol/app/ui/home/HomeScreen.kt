@@ -58,6 +58,7 @@ import com.voicecontrol.app.R
 import com.voicecontrol.app.core.actions.VoiceAction
 import com.voicecontrol.app.core.actions.VoiceIntent
 import com.voicecontrol.app.core.permissions.PermissionUtils
+import com.voicecontrol.app.core.speech.Ambiguity
 import com.voicecontrol.app.core.speech.ListeningState
 import com.voicecontrol.app.core.speech.ListeningStatus
 import com.voicecontrol.app.core.speech.SpeechError
@@ -121,6 +122,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         onSaveWakeWord = viewModel::setWakeWord,
         onBindUnknownPhrase = viewModel::bindUnknownPhrase,
         onDismissCorrection = viewModel::dismissCorrection,
+        onChooseSuggestion = viewModel::chooseSuggestion,
     )
 }
 
@@ -140,6 +142,7 @@ private fun HomeContent(
     onSaveWakeWord: (String) -> Unit = {},
     onBindUnknownPhrase: (String, VoiceAction) -> Unit = { _, _ -> },
     onDismissCorrection: (String) -> Unit = {},
+    onChooseSuggestion: (VoiceAction) -> Unit = {},
 ) {
     // Les trois étapes de l'assistant de configuration.
     val permissionItems = listOf(
@@ -189,6 +192,16 @@ private fun HomeContent(
             ServiceToggleCard(uiState = uiState, onToggleService = onToggleService)
 
             RecognitionCard(listening = uiState.listening, wakeWord = uiState.wakeWord)
+
+            // Phrase comprise à moitié : on propose, l'utilisateur tranche, et
+            // son choix vaut apprentissage.
+            uiState.pendingAmbiguity?.let { ambiguity ->
+                AmbiguityCard(
+                    ambiguity = ambiguity,
+                    onChoose = onChooseSuggestion,
+                    onDismiss = { onDismissCorrection(ambiguity.phrase) },
+                )
+            }
 
             // Phrase non comprise : on propose de l'apprendre plutôt que de
             // laisser l'utilisateur se demander pourquoi ça n'a pas marché.
@@ -362,6 +375,52 @@ private fun RecognitionCard(listening: ListeningState, wakeWord: String) {
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Proposition de trancher entre plusieurs actions possibles.
+ *
+ * C'est le niveau intermédiaire du score de confiance : la phrase ressemble à
+ * plusieurs commandes sans être tranchante. Les options sont classées de la plus
+ * probable à la moins probable, et le choix de l'utilisateur est **appris** —
+ * donc la prochaine fois, la question ne se posera plus.
+ */
+@Composable
+private fun AmbiguityCard(
+    ambiguity: Ambiguity,
+    onChoose: (VoiceAction) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.ambiguity_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = stringResource(R.string.ambiguity_hint, ambiguity.phrase),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            // Une ligne par option : des libellés longs ne tiennent pas côte à côte.
+            ambiguity.options.forEach { action ->
+                OutlinedButton(
+                    onClick = { onChoose(action) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(stringResource(actionLabelRes(action)))
+                }
+            }
+
+            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+                Text(stringResource(R.string.correction_dismiss))
             }
         }
     }

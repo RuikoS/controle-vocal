@@ -92,6 +92,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             wakeWord = settings.wakeWord,
             pendingCorrection = listening.unknownPhrase
                 ?.takeIf { it != settings.dismissedUnknown },
+            pendingAmbiguity = listening.ambiguity
+                ?.takeIf { it.phrase != settings.dismissedUnknown },
         )
     }.stateIn(
         scope = viewModelScope,
@@ -168,6 +170,22 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     /** Écarte une phrase non comprise sans rien apprendre. */
     fun dismissCorrection(phrase: String) {
         dismissedUnknown.value = phrase
+    }
+
+    /**
+     * Tranche une ambiguïté : l'action choisie est **apprise** pour cette phrase,
+     * puis exécutée immédiatement.
+     *
+     * L'exécution passe par le service, seul à disposer du service
+     * d'accessibilité ; l'apprentissage, lui, est local et immédiat.
+     */
+    fun chooseSuggestion(action: VoiceAction) {
+        val ambiguity = uiState.value.pendingAmbiguity ?: return
+
+        app.learning.learn(ambiguity.phrase, action)
+        dismissedUnknown.value = ambiguity.phrase
+
+        VoiceControlService.perform(getApplication(), action)
     }
 
     override fun onCleared() {

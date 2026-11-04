@@ -7,6 +7,7 @@ import android.os.IBinder
 import androidx.core.content.ContextCompat
 import com.voicecontrol.app.R
 import com.voicecontrol.app.VoiceControlApp
+import com.voicecontrol.app.core.actions.VoiceAction
 import com.voicecontrol.app.core.notifications.NotificationHelper
 import com.voicecontrol.app.core.speech.ListeningState
 import com.voicecontrol.app.core.speech.VoiceListeningController
@@ -77,6 +78,8 @@ class VoiceControlService : Service() {
             // Les formulations apprises, pour que les corrections soient
             // appliquées immédiatement.
             learnedAliasesProvider = { learning.learnedAliases.value },
+            // Compteur d'usage : une formulation apprise qui sert gagne en poids.
+            onLearnedPhraseUsed = learning::recordPhraseUse,
             scope = scope,
         )
         controller = listeningController
@@ -89,6 +92,13 @@ class VoiceControlService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // L'écran peut demander l'exécution d'une action choisie parmi les
+        // propositions : le service est le seul à pouvoir agir réellement.
+        intent?.getStringExtra(EXTRA_ACTION)?.let { actionName ->
+            val action = VoiceAction.entries.firstOrNull { it.name == actionName }
+            if (action != null) controller?.performFromUi(action)
+        }
+
         // START_STICKY : si Android tue le service faute de mémoire, il le relance.
         return START_STICKY
     }
@@ -107,6 +117,9 @@ class VoiceControlService : Service() {
     }
 
     companion object {
+        /** Action choisie sur l'écran, transmise au service. */
+        private const val EXTRA_ACTION = "extra_action"
+
         /**
          * État observable du service, exposé à l'UI.
          * C'est ce flux qui évite d'avoir à deviner si le service tourne encore :
@@ -130,6 +143,18 @@ class VoiceControlService : Service() {
         /** Arrête l'écoute et retire la notification permanente. */
         fun stop(context: Context) {
             context.stopService(Intent(context, VoiceControlService::class.java))
+        }
+
+        /**
+         * Exécute une action choisie par l'utilisateur sur l'écran.
+         *
+         * Le service tourne déjà : un simple `startService` lui transmet la
+         * demande, sans repasser par une notification ni un nouveau démarrage.
+         */
+        fun perform(context: Context, action: VoiceAction) {
+            val intent = Intent(context, VoiceControlService::class.java)
+                .putExtra(EXTRA_ACTION, action.name)
+            context.startService(intent)
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.voicecontrol.app.core.speech
 
 import com.voicecontrol.app.core.actions.ActionPerformer
+import com.voicecontrol.app.core.actions.VoiceAction
 import com.voicecontrol.app.core.actions.VoiceIntent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -14,21 +15,18 @@ import kotlinx.coroutines.launch
 /**
  * Chef d'orchestre de l'écoute.
  *
- * L'application utilise **deux moteurs de reconnaissance**, et ce choix mérite
- * d'être expliqué :
+ * L'application utilise **deux moteurs**, et ce choix mérite d'être expliqué :
+ *  - **Veille** : un moteur *local* écoute en permanence à la recherche du seul
+ *    mot-clé. C'est la partie qui tourne jour et nuit, elle doit être économe et
+ *    fonctionner sans réseau.
+ *  - **Commande** : dès le mot-clé reconnu, un moteur *en ligne* prend le relais.
+ *    Sa précision est sans comparaison, et seule la commande quitte le téléphone.
  *
- *  - **Veille** : un moteur *local* écoute en permanence, à la recherche du seul
- *    mot-clé de réveil. C'est la partie qui tourne jour et nuit, elle doit être
- *    économe et fonctionner sans réseau — aucun service en ligne ne sait
- *    surveiller un mot en continu.
- *  - **Commande** : dès que le mot-clé est reconnu, un moteur *en ligne* prend le
- *    relais pour transcrire la commande. Sa précision est sans comparaison avec
- *    un modèle embarqué, et seule la commande quitte alors le téléphone.
+ * Le résultat d'une commande est ensuite nuancé par un **score de confiance** :
+ * exécution directe, proposition de deux ou trois actions, ou demande de
+ * reformulation — cette dernière alimentant l'apprentissage.
  *
- * L'écran ne sait rien de tout cela : il ne voit qu'un état et des événements.
- *
- * Il n'y a volontairement AUCUN retour vocal : l'application ne parle pas. Un
- * bip signale simplement le moment où il faut parler.
+ * Il n'y a volontairement AUCUN retour vocal : l'application ne parle pas.
  */
 class VoiceListeningController(
     /** Moteur local, chargé de guetter le mot-clé. */
@@ -41,6 +39,8 @@ class VoiceListeningController(
     private val wakeWordProvider: () -> String,
     /** Fournit les formulations apprises des corrections de l'utilisateur. */
     private val learnedAliasesProvider: () -> List<LearnedAlias>,
+    /** Signale qu'une formulation apprise vient de servir, pour son compteur. */
+    private val onLearnedPhraseUsed: (String) -> Unit,
     private val scope: CoroutineScope,
 ) {
 
@@ -97,8 +97,19 @@ class VoiceListeningController(
         soundFeedback.release()
     }
 
+    /**
+     * Exécute une action choisie par l'utilisateur sur l'écran.
+     *
+     * Sert quand le score était moyen : l'application a proposé deux ou trois
+     * actions, et c'est l'utilisateur qui tranche. Son choix est enregistré côté
+     * écran comme un apprentissage.
+     */
+    fun performFromUi(action: VoiceAction) {
+        execute(VoiceIntent.Execute(action), transcript = "", learnedPhrase = null)
+    }
+
     // ------------------------------------------------------------------
-    // Les deux modes, et la passation de micro entre les deux moteurs.
+    // Passation de micro entre les deux moteurs
     // ------------------------------------------------------------------
 
     private fun enterWakeWordMode() {
@@ -109,14 +120,18 @@ class VoiceListeningController(
         switchJob?.cancel()
         switchJob = scope.launch {
             commandRecognizer.stop()
-            // Le micro doit être réellement rendu avant d'être repris : deux
-            // moteurs ne peuvent pas l'ouvrir en même temps.
+            // Le micro doit être réellement rendu avant d'être repris.
             delay(MICROPHONE_HANDOVER_MILLIS)
             if (mode != Mode.WakeWord) return@launch
 
             wakeWordRecognizer.start()
             _state.update {
-                it.copy(status = ListeningStatus.WaitingForWakeWord, partialText = "", diagnostic = null)
+                it.copy(
+                    status = ListeningStatus.WaitingForWakeWord,
+                    partialText = "",
+                    diagnostic = null,
+                    ambiguity = null,
+                )
             }
         }
     }
@@ -131,8 +146,8 @@ class VoiceListeningController(
             if (mode != Mode.Command) return@launch
 
             // Le bip est joué pendant que PERSONNE n'écoute : il ne peut donc pas
-            // être pris pour une parole. C'est le seul instant où c'est possible —
-            // et c'est exactement pour cela qu'il indique quand parler.
+            // être pris pour une parole, et c'est ce qui en fait un signal fiable
+            // du moment où il faut parler.
             soundFeedback.playWakeSound()
             delay(SIGNAL_SETTLE_MILLIS)
             if (mode != Mode.Command) return@launch
@@ -144,13 +159,13 @@ class VoiceListeningController(
                     partialText = "",
                     diagnostic = null,
                     unknownPhrase = null,
+                    ambiguity = null,
                 )
             }
         }
 
-        // Fenêtre bornée, dans une tâche séparée pour pouvoir l'annuler sans
-        // annuler la séquence ci-dessus. Sans elle, l'application resterait à
-        // transcrire le monde entier si l'on ne dit rien.
+        // Fenêtre bornée : sans elle, l'application resterait à transcrire le
+        // monde entier si l'on ne dit rien.
         windowJob?.cancel()
         windowJob = scope.launch {
             delay(COMMAND_WINDOW_MILLIS)
@@ -163,8 +178,6 @@ class VoiceListeningController(
     // ------------------------------------------------------------------
 
     private fun onWakeWordEvent(event: SpeechEvent) {
-        // Un événement tardif du moteur local, après une passation, ne doit pas
-        // polluer l'état courant.
         if (mode != Mode.WakeWord) return
 
         when (event) {
@@ -192,17 +205,13 @@ class VoiceListeningController(
                 )
             }
 
-            // Réaction IMMÉDIATE : on n'attend pas que le moteur estime la phrase
-            // terminée pour reconnaître le mot-clé. C'est ce qui supprime le
-            // délai qui faisait paraître la détection capricieuse.
+            // Réaction immédiate, sans attendre la fin de la phrase.
             is SpeechEvent.PartialResult -> {
                 if (VoiceVocabulary.containsWakeWord(event.text, wakeWordProvider())) {
                     enterCommandMode()
                 }
             }
 
-            // En veille, les silences ne sont jamais affichés : on n'y verrait
-            // que des trous dans une conversation.
             SpeechEvent.Silence -> Unit
         }
     }
@@ -210,8 +219,6 @@ class VoiceListeningController(
     private fun onWakeWordPhrase(transcript: String) {
         val heard = transcript.trim()
 
-        // gateOpen = false : sans mot-clé, RIEN ne doit s'exécuter. C'est la
-        // garantie que le téléphone n'obéit pas à une phrase entendue par hasard.
         when (val interpretation = VoiceVocabulary.interpret(
             transcript = heard,
             gateOpen = false,
@@ -220,19 +227,19 @@ class VoiceListeningController(
         )) {
             VoiceVocabulary.Interpretation.WakeWord -> enterCommandMode()
 
-            is VoiceVocabulary.Interpretation.WakeWordWithIntent -> {
-                // « Gregor, ouvre Spotify » dit d'une seule traite : l'intention
-                // est déjà comprise, inutile de réveiller le moteur en ligne.
-                val succeeded = execute(interpretation.intent, heard)
-                soundFeedback.play(if (succeeded) FeedbackCue.Success else FeedbackCue.Failure)
+            is VoiceVocabulary.Interpretation.Command -> {
+                // « ordinateur, glisse à droite » dit d'une seule traite.
+                applyResolution(interpretation.resolution, heard)
             }
 
-            else -> _state.update { it.copy(diagnostic = "Ignoré : « $heard »") }
+            VoiceVocabulary.Interpretation.Unrelated -> _state.update {
+                it.copy(diagnostic = "Ignoré : « $heard »")
+            }
         }
     }
 
     // ------------------------------------------------------------------
-    // Commande : on transcrit, on exécute, on rend la main.
+    // Commande : on transcrit, on note, on agit.
     // ------------------------------------------------------------------
 
     private fun onCommandEvent(event: SpeechEvent) {
@@ -254,8 +261,6 @@ class VoiceListeningController(
             is SpeechEvent.Diagnostic -> _state.update { it.copy(diagnostic = event.message) }
 
             is SpeechEvent.Failed -> {
-                // Rien de compréhensible : on rend la main à la veille plutôt que
-                // d'insister. Les silences, eux, sont gérés par la fenêtre bornée.
                 _state.update {
                     it.copy(
                         diagnostic = "Non compris — redites « " +
@@ -271,32 +276,72 @@ class VoiceListeningController(
 
     private fun onCommandPhrase(transcript: String) {
         val heard = transcript.trim()
-        val intent = VoiceVocabulary.parseIntent(heard, learnedAliasesProvider())
+        val resolution = VoiceVocabulary.resolve(heard, learnedAliasesProvider())
 
-        val succeeded = if (intent != null) {
-            execute(intent, heard)
-        } else {
-            // Phrase non comprise : on la transmet pour que l'utilisateur puisse
-            // la rattacher lui-même à une action. C'est ainsi que l'application
-            // apprend son vocabulaire.
-            _state.update {
-                it.copy(diagnostic = "Ignoré : « $heard »", unknownPhrase = heard)
-            }
-            false
-        }
+        applyResolution(resolution, heard)
 
-        // Une seule commande par mot-clé : il faut redire « Gregor ».
+        // Une seule commande par mot-clé : il faut redire le mot-clé.
         enterWakeWordMode()
 
         // Le retour sonore est joué APRÈS la bascule : à cet instant, c'est le
-        // moteur local qui écoute, et un bip ne peut donc plus être pris pour
-        // une commande.
-        soundFeedback.play(if (succeeded) FeedbackCue.Success else FeedbackCue.Failure)
+        // moteur local qui écoute, et un bip ne peut plus être pris pour une
+        // commande.
+        if (resolution !is VoiceVocabulary.Resolution.Ambiguous) {
+            val succeeded = resolution is VoiceVocabulary.Resolution.Single
+            soundFeedback.play(if (succeeded) FeedbackCue.Success else FeedbackCue.Failure)
+        }
+    }
+
+    /**
+     * Applique le résultat du score, quel qu'il soit.
+     *
+     * C'est le cœur du comportement demandé : haute confiance, on agit ; moyenne,
+     * on propose ; basse, on demande de reformuler — et l'écran transformera la
+     * correction en apprentissage.
+     */
+    private fun applyResolution(resolution: VoiceVocabulary.Resolution, transcript: String) {
+        when (resolution) {
+            is VoiceVocabulary.Resolution.Single -> {
+                val succeeded = execute(
+                    intent = resolution.intent,
+                    transcript = transcript,
+                    learnedPhrase = resolution.learnedPhrase,
+                )
+                // En veille (mot-clé et commande d'une traite), le retour sonore
+                // doit être joué tout de suite.
+                if (mode == Mode.WakeWord) {
+                    soundFeedback.play(if (succeeded) FeedbackCue.Success else FeedbackCue.Failure)
+                }
+            }
+
+            is VoiceVocabulary.Resolution.Ambiguous -> _state.update {
+                it.copy(
+                    status = ListeningStatus.Listening,
+                    partialText = "",
+                    unknownPhrase = null,
+                    ambiguity = Ambiguity(phrase = resolution.phrase, options = resolution.options),
+                    diagnostic = "Doute — ${resolution.options.size} actions proposées",
+                )
+            }
+
+            VoiceVocabulary.Resolution.None -> _state.update {
+                it.copy(
+                    ambiguity = null,
+                    // La phrase devient la matière première de l'apprentissage.
+                    unknownPhrase = transcript.ifBlank { null },
+                    diagnostic = "Ignoré : « $transcript »",
+                )
+            }
+        }
     }
 
     /** Exécute l'intention, rend compte du résultat, et dit si elle a abouti. */
-    private fun execute(intent: VoiceIntent, transcript: String): Boolean {
+    private fun execute(intent: VoiceIntent, transcript: String, learnedPhrase: String?): Boolean {
         val succeeded = performer.perform(intent)
+
+        // Une formulation apprise qui sert gagne en importance : c'est ce
+        // compteur qui départagera les prochaines ambiguïtés.
+        learnedPhrase?.let(onLearnedPhraseUsed)
 
         _state.update {
             it.copy(
@@ -306,12 +351,13 @@ class VoiceListeningController(
                     ListeningStatus.Listening
                 },
                 partialText = "",
-                lastPhrase = transcript,
+                lastPhrase = transcript.ifBlank { "choix manuel" },
                 error = null,
                 silenceCount = 0,
                 lastIntent = intent,
                 actionFailed = !succeeded,
                 unknownPhrase = null,
+                ambiguity = null,
                 diagnostic = "Compris : « $transcript »",
             )
         }
