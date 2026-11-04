@@ -1,0 +1,46 @@
+# Catalogue de versions centralisé : une seule source de vérité pour tout le projet.
+#
+# Pile alignée sur Android Studio 2026.2 (JDK 25 embarqué) :
+#  - Gradle 9.6.0 est le minimum requis par AGP 9.5.0, et il sait tourner sur Java 25
+#    (Gradle 8.x s'arrêtait à Java 22, d'où l'impossibilité de garder l'ancienne pile).
+[versions]
+agp = "9.5.0"
+# AGP 9.5 embarque KGP 2.2.10 (support Kotlin intégré) : le plugin Compose DOIT
+# utiliser exactement la même version, sinon le compilateur Compose est rejeté.
+kotlin = "2.2.10"
+coreKtx = "1.19.1"
+lifecycle = "2.11.0"
+activityCompose = "1.13.0"
+composeBom = "2026.09.00"
+# Vosk : reconnaissance vocale hors ligne, Apache 2.0, aucun compte ni clé.
+# A remplace le moteur d'Android, qui exigeait Internet et ne savait pas
+# surveiller un mot-clé.
+vosk = "0.3.75"
+
+[libraries]
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
+androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+
+# La BOM aligne automatiquement les versions de toutes les libs Compose entre elles.
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+androidx-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+
+# Déclaré explicitement : Material 3 ne garantit plus de le tirer transitivement,
+# or on utilise les icônes « de base » (Icons.Default.*).
+androidx-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core" }
+
+# Moteur de reconnaissance vocale hors ligne (modèle français embarqué dans les ressources).
+vosk-android = { group = "com.alphacephei", name = "vosk-android", version.ref = "vosk" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+# Plus de plugin "org.jetbrains.kotlin.android" : depuis AGP 9.0, le support
+# Kotlin est intégré à AGP (built-in Kotlin) et ce plugin fait échouer le build.
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Thème XML minimal : il ne sert qu'au lancement de l'Activity (fond de fenêtre,
+    absence de barre d'action). Toute l'apparence réelle est gérée par le thème
+    Material 3 de Compose (ui/theme/Theme.kt).
+
+    Le parent ne dépend PAS d'AppCompat : l'Activity hérite de ComponentActivity.
+-->
+<resources>
+    <style name="Theme.VoiceControlApp" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+    </style>
+</resources>

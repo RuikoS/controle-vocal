@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fond du calque arrière de l'icône adaptative (Android 8+). -->
+    <color name="ic_launcher_background">#1F3A93</color>
+
+    <!-- Couleur de fenêtre, visible pendant le tout premier rendu avant Compose. -->
+    <color name="window_background">#FFFFFFFF</color>
+</resources>

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Toutes les chaînes visibles par l'utilisateur sont centralisées ici.
+    Attention : une apostrophe NON échappée (comme dans "l'application") fait
+    échouer la compilation des ressources Android. On écrit donc \' partout.
+-->
+<resources>
+    <string name="app_name">Contrôle vocal</string>
+    <string name="app_version_label">Version %1$s</string>
+
+    <!-- ===== Ecran accueil ===== -->
+    <string name="home_title">Contrôle vocal</string>
+    <string name="home_subtitle">Pilotez votre téléphone à la voix, en français.</string>
+    <string name="home_toggle_title">Contrôle vocal</string>
+    <string name="home_state_on">ACTIVÉ</string>
+    <string name="home_state_off">DÉSACTIVÉ</string>
+    <string name="home_state_hint_on">Le service est démarré et reste actif en arrière-plan.</string>
+    <string name="home_state_hint_off">Démarrez le service pour commencer à écouter.</string>
+    <string name="home_state_hint_missing">Activez les 3 autorisations ci-dessous pour pouvoir démarrer.</string>
+
+    <!-- ===== Assistant de configuration ===== -->
+    <string name="assistant_title">Assistant de configuration</string>
+    <string name="assistant_subtitle">Activez les 3 autorisations suivantes. Elles sont indispensables au bon fonctionnement.</string>
+    <string name="assistant_progress">Autorisations activées : %1$d/%2$d</string>
+    <string name="assistant_all_granted">Tout est prêt, vous pouvez démarrer le contrôle vocal.</string>
+
+    <!-- Microphone -->
+    <string name="permission_microphone_title">Microphone</string>
+    <string name="permission_microphone_description">C\'est grâce au micro que l\'application entend vos commandes vocales.</string>
+
+    <!-- Notifications -->
+    <string name="permission_notifications_title">Notifications</string>
+    <string name="permission_notifications_description">Nécessaire pour afficher la notification permanente du service d\'écoute.</string>
+
+    <!-- Service d'accessibilite -->
+    <string name="permission_accessibility_title">Service d\'accessibilité</string>
+    <string name="permission_accessibility_description">Permet d\'agir réellement sur le téléphone : ouvrir des applications, appuyer sur l\'écran, faire défiler, déverrouiller…</string>
+
+    <!-- Etats et actions -->
+    <string name="permission_state_granted">Autorisation accordée</string>
+    <string name="permission_state_denied">Autorisation manquante</string>
+    <string name="action_grant">Autoriser</string>
+    <string name="action_open_accessibility_settings">Ouvrir les réglages</string>
+
+    <!-- ===== Service de premier plan ===== -->
+    <string name="notification_channel_name">Service d\'écoute</string>
+    <string name="notification_channel_description">Notification permanente affichée pendant que le contrôle vocal est actif.</string>
+    <string name="notification_title">Contrôle vocal actif</string>
+    <string name="notification_text">Le service est actif : l\'application écoute vos commandes vocales.</string>
+
+    <!-- ===== Reconnaissance vocale ===== -->
+    <string name="recognition_title">Reconnaissance vocale</string>
+    <string name="recognition_status_idle">Inactif</string>
+    <string name="recognition_status_preparing">Préparation du modèle…</string>
+    <string name="recognition_status_waiting_wake_word">En veille — dites « %1$s »</string>
+    <string name="recognition_status_listening">En écoute…</string>
+    <string name="recognition_status_processing">Traitement…</string>
+    <string name="recognition_status_error">Erreur</string>
+    <string name="recognition_last_phrase">Dernière phrase entendue</string>
+    <string name="recognition_nothing_yet">Rien entendu pour l\'instant.</string>
+    <string name="recognition_last_action">Dernière action</string>
+    <string name="recognition_no_action">Aucune</string>
+    <string name="recognition_action_failed">Impossible : %1$s — service d\'accessibilité requis</string>
+
+    <!-- ===== Intentions a parametre ===== -->
+    <string name="intent_launch_app">Ouvrir « %1$s »</string>
+    <string name="intent_type_text">Écrire : %1$s</string>
+
+    <!-- ===== Actions executables ===== -->
+    <string name="action_swipe_right">Glisser à droite</string>
+    <string name="action_swipe_left">Glisser à gauche</string>
+    <string name="action_swipe_up">Glisser vers le haut</string>
+    <string name="action_swipe_down">Glisser vers le bas</string>
+    <string name="action_scroll_down">Défiler vers le bas</string>
+    <string name="action_scroll_up">Défiler vers le haut</string>
+    <string name="action_back">Retour</string>
+    <string name="action_home">Écran d\'accueil</string>
+    <string name="action_recents">Applications récentes</string>
+    <string name="action_lock_screen">Verrouillage de l\'écran</string>
+
+    <!-- ===== Reglages : son de reveil ===== -->
+    <string name="settings_wake_sound_title">Son de réveil</string>
+    <string name="settings_wake_sound_hint">Le bip qui confirme que le mot-clé a été reconnu. Touchez un son pour l\'écouter.</string>
+    <string name="sound_beep">Bip court</string>
+    <string name="sound_pip">Bip discret</string>
+    <string name="sound_acknowledge">Double bip montant</string>
+    <string name="sound_negative">Bip descendant</string>
+    <string name="sound_alert">Sonnerie courte</string>
+    <string name="sound_silent">Aucun son</string>
+
+    <!-- ===== Reglages : mot-cle de reveil ===== -->
+    <string name="settings_wake_word_title">Mot-clé de réveil</string>
+    <string name="settings_wake_word_hint">Le mot que vous prononcez pour réveiller l\'application. Choisissez un VRAI mot français : le moteur embarqué le reconnaît bien mieux qu\'un prénom inventé, et c\'est lui qui décide de la fiabilité de la détection.</string>
+    <string name="settings_wake_word_label">Mot-clé</string>
+    <string name="settings_save">Enregistrer</string>
+    <string name="settings_cancel">Annuler</string>
+
+    <!-- ===== Apprentissage des phrases non comprises ===== -->
+    <string name="correction_title">Je n\'ai pas compris</string>
+    <string name="correction_hint">« %1$s » ne correspond à aucune commande. À quoi voulais-tu que ça corresponde ? Une fois retenu, les phrases proches marcheront aussi.</string>
+    <string name="correction_choose">Choisir une action</string>
+    <string name="correction_bind">Retenir</string>
+    <string name="correction_dismiss">Ignorer</string>
+
+    <!-- ===== Pannes de la reconnaissance, affichees dans la carte d\'ecoute ===== -->
+    <string name="speech_error_unavailable">Aucun moteur de reconnaissance vocale n\'est installé sur ce téléphone.</string>
+    <string name="speech_error_microphone">L\'autorisation microphone a été refusée.</string>
+    <string name="speech_error_language">La reconnaissance du français n\'est pas disponible sur ce téléphone.</string>
+    <string name="speech_error_busy">Le moteur vocal était occupé, nouvelle tentative…</string>
+    <string name="speech_error_network">La reconnaissance a besoin d\'une connexion Internet sur ce téléphone.</string>
+    <string name="speech_error_audio">Le microphone est inaccessible, souvent parce qu\'une autre application l\'utilise.</string>
+    <string name="speech_error_unknown">Erreur de reconnaissance vocale inconnue.</string>
+    <string name="speech_error_model">Le modèle de reconnaissance français n\'a pas pu être chargé.</string>
+    <string name="speech_error_engine">Le moteur de reconnaissance n\'a pas pu démarrer.</string>
+    <string name="speech_error_with_code">%1$s (code %2$d)</string>
+    <string name="recognition_status_listening_deaf">En écoute… mais rien n\'est compris (%1$d silences d\'affilée)</string>
+
+    <!-- ===== Service d'accessibilite : textes affiches dans les reglages Android ===== -->
+    <string name="accessibility_service_label">Contrôle vocal</string>
+    <string name="accessibility_service_summary">Agir sur l\'écran à votre place, à la voix.</string>
+    <string name="accessibility_service_description">Autorise « Contrôle vocal » à agir sur l\'interface du téléphone : ouvrir des applications, appuyer sur des boutons, faire défiler les écrans et déverrouiller l\'appareil lorsque vous le demandez à la voix. Aucune donnée n\'est envoyée sur Internet.</string>
+</resources>
