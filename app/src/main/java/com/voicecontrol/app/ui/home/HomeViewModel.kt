@@ -156,11 +156,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * Apprend qu'une phrase non comprise correspond à une action.
      *
-     * C'est le geste d'apprentissage : la phrase devient un synonyme et
-     * fonctionnera dès la prochaine fois, sans redémarrage.
+     * Aucune confirmation supplémentaire : l'utilisateur vient d'exprimer ce que
+     * sa phrase voulait dire en choisissant l'action. L'enregistrement part
+     * immédiatement en base, et la formulation est utilisable aussitôt.
      */
     fun bindUnknownPhrase(phrase: String, action: VoiceAction) {
-        app.settings.addLearnedAlias(phrase, action)
+        app.learning.learn(phrase, action)
         dismissedUnknown.value = phrase
     }
 

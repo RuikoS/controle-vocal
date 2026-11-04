@@ -16,6 +16,10 @@ composeBom = "2026.09.00"
 # A remplace le moteur d'Android, qui exigeait Internet et ne savait pas
 # surveiller un mot-clé.
 vosk = "0.3.75"
+# Room : stockage local de ce que l'application apprend, avec compteurs d'usage.
+room = "2.8.5"
+# KSP doit correspondre EXACTEMENT au Kotlin embarqué par AGP (2.2.10).
+ksp = "2.2.10-2.0.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -39,8 +43,13 @@ androidx-material-icons-core = { group = "androidx.compose.material", name = "ma
 # Moteur de reconnaissance vocale hors ligne (modèle français embarqué dans les ressources).
 vosk-android = { group = "com.alphacephei", name = "vosk-android", version.ref = "vosk" }
 
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 # Plus de plugin "org.jetbrains.kotlin.android" : depuis AGP 9.0, le support
 # Kotlin est intégré à AGP (built-in Kotlin) et ce plugin fait échouer le build.
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }

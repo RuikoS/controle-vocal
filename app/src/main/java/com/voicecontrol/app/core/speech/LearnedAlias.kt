@@ -17,4 +17,11 @@ import com.voicecontrol.app.core.actions.VoiceAction
 data class LearnedAlias(
     val phrase: String,
     val action: VoiceAction,
+    /**
+     * Combien de fois cette association a servi.
+     *
+     * C'est la fréquence qui départagera deux formulations également
+     * ressemblantes : celle qui sert le plus souvent est celle qu'on voulait.
+     */
+    val useCount: Int = 1,
 )

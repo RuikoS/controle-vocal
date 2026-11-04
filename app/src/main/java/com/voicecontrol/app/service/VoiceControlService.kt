@@ -56,7 +56,9 @@ class VoiceControlService : Service() {
         // contraintes est réglée dans son implémentation, pas ici.
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-        val settings = (application as VoiceControlApp).settings
+        val app = application as VoiceControlApp
+        val settings = app.settings
+        val learning = app.learning
 
         val listeningController = VoiceListeningController(
             // VEILLE : moteur local et hors ligne. Il tourne en permanence pour
@@ -74,7 +76,7 @@ class VoiceControlService : Service() {
             wakeWordProvider = { settings.wakeWord.value },
             // Les formulations apprises, pour que les corrections soient
             // appliquées immédiatement.
-            learnedAliasesProvider = { settings.learnedAliases.value },
+            learnedAliasesProvider = { learning.learnedAliases.value },
             scope = scope,
         )
         controller = listeningController

@@ -97,9 +97,8 @@
 
     <!-- ===== Apprentissage des phrases non comprises ===== -->
     <string name="correction_title">Je n\'ai pas compris</string>
-    <string name="correction_hint">« %1$s » ne correspond à aucune commande. À quoi voulais-tu que ça corresponde ? Une fois retenu, les phrases proches marcheront aussi.</string>
+    <string name="correction_hint">« %1$s » ne correspond à aucune commande. Choisissez ce que vous vouliez dire : ce sera appris immédiatement, et les formulations proches marcheront aussi.</string>
     <string name="correction_choose">Choisir une action</string>
-    <string name="correction_bind">Retenir</string>
     <string name="correction_dismiss">Ignorer</string>
 
     <!-- ===== Pannes de la reconnaissance, affichees dans la carte d\'ecoute ===== -->

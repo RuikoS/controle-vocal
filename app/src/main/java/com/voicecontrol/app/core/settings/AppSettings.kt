@@ -35,11 +35,6 @@ class AppSettings(context: Context) {
     /** Mot-clé qui réveille l'application. */
     val wakeWord: StateFlow<String> = _wakeWord.asStateFlow()
 
-    private val _learnedAliases = MutableStateFlow(readLearnedAliases())
-
-    /** Formulations apprises des corrections de l'utilisateur. */
-    val learnedAliases: StateFlow<List<LearnedAlias>> = _learnedAliases.asStateFlow()
-
     fun setWakeSound(sound: WakeSound) {
         _wakeSound.value = sound
         preferences.edit().putString(KEY_WAKE_SOUND, sound.name).apply()
@@ -64,43 +59,27 @@ class AppSettings(context: Context) {
         preferences.getString(KEY_WAKE_WORD, null)?.takeIf { it.isNotBlank() } ?: DEFAULT_WAKE_WORD
 
     /**
-     * Retient qu'une phrase prononcée désigne une action.
+     * Récupère les apprentissages de l'ancien stockage (avant Room) et les efface.
      *
-     * La même phrase ne peut désigner qu'une seule action : la réapprendre
-     * **remplace** l'ancienne. C'est ce qui permet de corriger un apprentissage
-     * raté sans avoir à effacer quoi que ce soit.
+     * Appelé une seule fois au démarrage : les formulations déjà apprises sont
+     * recopiées dans la base, puis la préférence disparaît. Sans cela,
+     * l'utilisateur perdrait ce qu'il avait appris en mettant à jour.
      */
-    fun addLearnedAlias(phrase: String, action: VoiceAction) {
-        val cleaned = phrase.trim()
-        if (cleaned.isBlank()) return
-
-        val updated = _learnedAliases.value
-            .filterNot { it.phrase.equals(cleaned, ignoreCase = true) } +
-            LearnedAlias(cleaned, action)
-
-        _learnedAliases.value = updated
-        preferences.edit()
-            .putString(KEY_LEARNED_ALIASES, serializeAliases(updated))
-            .apply()
-    }
-
-    /** Relit les formulations apprises. */
-    fun removeLearnedAlias(phrase: String) {
-        val updated = _learnedAliases.value.filterNot { it.phrase.equals(phrase, ignoreCase = true) }
-        _learnedAliases.value = updated
-        preferences.edit().putString(KEY_LEARNED_ALIASES, serializeAliases(updated)).apply()
+    fun takeLegacyAliases(): List<LearnedAlias> {
+        val stored = preferences.getString(KEY_LEGACY_LEARNED_ALIASES, null) ?: return emptyList()
+        preferences.edit().remove(KEY_LEGACY_LEARNED_ALIASES).apply()
+        return parseLegacyAliases(stored)
     }
 
     /**
-     * Les formulations sont stockées en JSON, sous la forme `{"phrase": "Action"}`.
+     * Ancien format d'apprentissage : `{"phrase": "NomDeLAction"}`.
      *
-     * Le nom de l'action est conservé plutôt que son rang : ajouter une action
-     * plus tard ne décalera pas les apprentissages déjà faits.
+     * Le nom de l'action est conservé plutôt que son rang, pour la même raison
+     * qu'en base : ajouter une action ne doit pas décaler les apprentissages
+     * déjà faits.
      */
-    private fun readLearnedAliases(): List<LearnedAlias> {
-        val stored = preferences.getString(KEY_LEARNED_ALIASES, null) ?: return emptyList()
-
-        return runCatching {
+    private fun parseLegacyAliases(stored: String): List<LearnedAlias> =
+        runCatching {
             val json = JSONObject(stored)
             json.keys().asSequence().mapNotNull { phrase ->
                 val actionName = json.optString(phrase)
@@ -109,13 +88,6 @@ class AppSettings(context: Context) {
                     ?.let { LearnedAlias(phrase = phrase, action = it) }
             }.toList()
         }.getOrDefault(emptyList())
-    }
-
-    private fun serializeAliases(aliases: List<LearnedAlias>): String {
-        val json = JSONObject()
-        aliases.forEach { alias -> json.put(alias.phrase, alias.action.name) }
-        return json.toString()
-    }
 
     /**
      * Relit le réglage stocké. Le nom est conservé plutôt que le rang dans
@@ -142,6 +114,6 @@ class AppSettings(context: Context) {
         private const val PREFERENCES_NAME = "voice_control_settings"
         private const val KEY_WAKE_SOUND = "wake_sound"
         private const val KEY_WAKE_WORD = "wake_word"
-        private const val KEY_LEARNED_ALIASES = "learned_aliases"
+        private const val KEY_LEGACY_LEARNED_ALIASES = "learned_aliases"
     }
 }

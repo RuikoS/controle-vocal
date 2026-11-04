@@ -4,6 +4,9 @@ plugins {
     // depuis AGP 9.0, le support Kotlin est intégré à AGP (built-in Kotlin).
     // Plugin Compose : depuis Kotlin 2.0, le compilateur Compose fait partie du plugin Kotlin.
     alias(libs.plugins.kotlin.compose)
+    // Room génère son code à la compilation. KSP plutôt que kapt : kapt est
+    // incompatible avec le Kotlin intégré d'AGP 9.
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -24,7 +27,7 @@ android {
         // Affiché en bas de l'écran d'accueil : une application installée à la
         // main n'a aucune vitrine pour dire de quelle version il s'agit, et on
         // finit par tester une ancienne sans le savoir.
-        versionName = "0.11.1"
+        versionName = "0.12.0"
     }
 
     buildTypes {
@@ -71,6 +74,11 @@ dependencies {
     // Reconnaissance vocale hors ligne. Le modèle français (40 Mo) est embarqué
     // dans app/src/main/assets/model-fr : l'application ne dépend d'aucun réseau.
     implementation(libs.vosk.android)
+
+    // Stockage local de l'apprentissage.
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     // Uniquement pour l'aperçu @Preview dans Android Studio, absent de l'APK final.
     debugImplementation(libs.androidx.ui.tooling)

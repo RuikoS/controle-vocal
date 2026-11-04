@@ -381,9 +381,8 @@ private fun CorrectionCard(
     onBind: (VoiceAction) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // La clé `phrase` remet le choix à zéro quand une nouvelle phrase arrive.
+    // La clé `phrase` remet le menu à zéro quand une nouvelle phrase arrive.
     var actionsOpen by rememberSaveable(phrase) { mutableStateOf(false) }
-    var chosen by rememberSaveable(phrase) { mutableStateOf<VoiceAction?>(null) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -403,10 +402,7 @@ private fun CorrectionCard(
             // `Box` sert d'ancre au menu déroulant : il s'ouvre sous le bouton.
             Box {
                 OutlinedButton(onClick = { actionsOpen = true }) {
-                    Text(
-                        text = chosen?.let { stringResource(actionLabelRes(it)) }
-                            ?: stringResource(R.string.correction_choose),
-                    )
+                    Text(stringResource(R.string.correction_choose))
                 }
                 DropdownMenu(
                     expanded = actionsOpen,
@@ -418,8 +414,11 @@ private fun CorrectionCard(
                         DropdownMenuItem(
                             text = { Text(stringResource(actionLabelRes(command.action))) },
                             onClick = {
-                                chosen = command.action
                                 actionsOpen = false
+                                // Choisir l'action suffit : aucune confirmation
+                                // supplémentaire. L'utilisateur vient d'exprimer
+                                // ce que sa phrase voulait dire.
+                                onBind(command.action)
                             },
                         )
                     }
@@ -432,12 +431,6 @@ private fun CorrectionCard(
             ) {
                 TextButton(onClick = onDismiss) {
                     Text(stringResource(R.string.correction_dismiss))
-                }
-                Button(
-                    onClick = { chosen?.let(onBind) },
-                    enabled = chosen != null,
-                ) {
-                    Text(stringResource(R.string.correction_bind))
                 }
             }
         }
