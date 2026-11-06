@@ -16,7 +16,14 @@ import com.voicecontrol.app.core.text.TextMatcher
  * La liste est mise en cache : l'interroger coûte un aller-retour avec le
  * système, et elle ne change pas en cours d'exécution.
  */
-class InstalledApps(private val context: Context) {
+class InstalledApps(
+    private val context: Context,
+    /**
+     * Table des alias d'applications : « you tube » y désigne déjà YouTube, ce
+     * qui vaut mieux que de compter sur la ressemblance des libellés.
+     */
+    private val catalog: VocabularyCatalog? = null,
+) {
 
     /** Une application lançable : ce qu'on montre, et ce qu'on lance. */
     data class AppTarget(val label: String, val packageName: String)
@@ -27,6 +34,13 @@ class InstalledApps(private val context: Context) {
      * faire que d'ouvrir une application au hasard.
      */
     fun resolve(spokenName: String): AppTarget? {
+        // 1. Les alias connus d'abord : c'est de la connaissance, pas une
+        //    approximation. « you tube » devient « YouTube » avant tout calcul.
+        catalog?.canonicalAppName(spokenName)?.let { canonical ->
+            launcherApps().firstOrNull { TextMatcher.normalize(it.label) == TextMatcher.normalize(canonical) }
+                ?.let { return it }
+        }
+
         val query = withoutFillerWords(TextMatcher.normalize(spokenName))
         if (query.isBlank()) return null
 

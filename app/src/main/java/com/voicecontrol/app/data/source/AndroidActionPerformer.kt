@@ -22,9 +22,12 @@ import com.voicecontrol.app.service.VoiceAccessibilityService
  * service d'accessibilité non activé, application introuvable, ou aucun champ
  * de saisie actif.
  */
-class AndroidActionPerformer(private val context: Context) : ActionPerformer {
+class AndroidActionPerformer(
+    private val context: Context,
+    catalog: VocabularyCatalog? = null,
+) : ActionPerformer {
 
-    private val installedApps = InstalledApps(context)
+    private val installedApps = InstalledApps(context, catalog)
 
     override fun perform(intent: VoiceIntent): Boolean = when (intent) {
         is VoiceIntent.Execute -> withAccessibility { it.perform(intent.action) }

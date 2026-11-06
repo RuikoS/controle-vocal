@@ -62,7 +62,7 @@ class VoiceControlService : Service() {
         val app = application as VoiceControlApp
         val settings = app.settings
         val learning = app.learning
-        val installedApps = InstalledApps(applicationContext)
+        val installedApps = InstalledApps(applicationContext, app.vocabulary)
 
         val listeningController = VoiceListeningController(
             // VEILLE : moteur local et hors ligne. Il tourne en permanence pour
@@ -86,7 +86,9 @@ class VoiceControlService : Service() {
             ),
             // Gestes et écriture par l'accessibilité, lancement d'application par
             // le gestionnaire de paquets.
-            performer = AndroidActionPerformer(applicationContext),
+            performer = AndroidActionPerformer(applicationContext, app.vocabulary),
+            // Corrections des erreurs de transcription connues (« you tube »).
+            correctionsProvider = app.vocabulary::normalizeAndCorrect,
             // Le bip d'activation, et les sons de retour de commande.
             soundFeedback = ToneSoundFeedback(settings),
             // Le mot-clé se règle depuis l'écran : on le relit à chaque usage.

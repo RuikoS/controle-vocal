@@ -5,6 +5,7 @@ import com.voicecontrol.app.core.notifications.NotificationHelper
 import com.voicecontrol.app.core.settings.AppSettings
 import com.voicecontrol.app.data.LearningRepository
 import com.voicecontrol.app.data.local.LearnedPhraseEntity
+import com.voicecontrol.app.data.source.VocabularyCatalog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,6 +29,7 @@ class VoiceControlApp : Application() {
     /** Créés à la première demande, une seule fois. */
     val settings: AppSettings by lazy { AppSettings(this) }
     val learning: LearningRepository by lazy { LearningRepository(this, appScope) }
+    val vocabulary: VocabularyCatalog by lazy { VocabularyCatalog(this) }
 
     override fun onCreate() {
         super.onCreate()

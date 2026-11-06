@@ -43,6 +43,14 @@ class VoiceListeningController(
     private val learnedAliasesProvider: () -> List<LearnedAlias>,
     /** Signale qu'une formulation apprise vient de servir, pour son compteur. */
     private val onLearnedPhraseUsed: (String) -> Unit,
+    /**
+     * Normalise et corrige une transcription avant comparaison.
+     *
+     * Le moteur se trompe toujours de la même façon : « you tube » pour YouTube,
+     * « adroite » pour « à droite ». Corriger ces erreurs connues vaut mieux que
+     * d'espérer un meilleur modèle.
+     */
+    private val correctionsProvider: (String) -> String = { it },
     private val scope: CoroutineScope,
 ) {
 
@@ -292,7 +300,7 @@ class VoiceListeningController(
         val heard = transcript.trim()
 
         when (val interpretation = VoiceVocabulary.interpret(
-            transcript = heard,
+            transcript = correctionsProvider(heard),
             gateOpen = false,
             wakeWord = wakeWordProvider(),
             learnedAliases = learnedAliasesProvider(),
@@ -352,7 +360,9 @@ class VoiceListeningController(
 
     private fun onCommandPhrase(transcript: String) {
         val heard = transcript.trim()
-        val resolution = VoiceVocabulary.resolve(heard, learnedAliasesProvider())
+        // On compare la version corrigée, mais on affiche et on apprend ce qui a
+        // réellement été entendu.
+        val resolution = VoiceVocabulary.resolve(correctionsProvider(heard), learnedAliasesProvider())
 
         applyResolution(resolution, heard)
 
