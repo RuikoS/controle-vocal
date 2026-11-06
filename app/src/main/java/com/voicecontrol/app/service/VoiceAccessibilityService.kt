@@ -106,6 +106,49 @@ class VoiceAccessibilityService : AccessibilityService() {
             toXRatio = 0.50f, toYRatio = 0.85f,
             durationMillis = SCROLL_DURATION_MILLIS,
         )
+
+        // ---- Gestes système ----
+
+        // Le volet se tire depuis le bord supérieur : on part du tout haut pour
+        // que le système reconnaisse le geste de la barre d'état.
+        VoiceAction.OpenNotifications -> swipe(
+            fromXRatio = 0.50f, fromYRatio = 0.005f,
+            toXRatio = 0.50f, toYRatio = 0.60f,
+            durationMillis = PULL_DURATION_MILLIS,
+        )
+
+        VoiceAction.QuickSettings -> twoStepPull()
+
+        VoiceAction.Screenshot ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
+            } else {
+                // La capture par accessibilité n'existe que depuis Android 11.
+                false
+            }
+
+        VoiceAction.PowerMenu -> performGlobalAction(GLOBAL_ACTION_POWER_DIALOG)
+
+        VoiceAction.TapCenter -> tap(0.5f, 0.5f)
+        VoiceAction.LongPress -> longPress(0.5f, 0.5f)
+        VoiceAction.DoubleTap -> doubleTap(0.5f, 0.5f)
+
+        // Vers le haut de la page : le doigt descend, le contenu monte.
+        VoiceAction.ScrollToTop -> repeatedSwipe(fromYRatio = 0.25f, toYRatio = 0.85f)
+        VoiceAction.ScrollToBottom -> repeatedSwipe(fromYRatio = 0.75f, toYRatio = 0.15f)
+
+        VoiceAction.ZoomIn -> pinch(outward = true)
+        VoiceAction.ZoomOut -> pinch(outward = false)
+
+        // Le volume et les touches média ne passent pas par l'accessibilité :
+        // c'est le gestionnaire audio qui s'en charge, sans aucune permission.
+        VoiceAction.VolumeUp,
+        VoiceAction.VolumeDown,
+        VoiceAction.VolumeMute,
+        VoiceAction.MediaPlayPause,
+        VoiceAction.MediaNext,
+        VoiceAction.MediaPrevious,
+        -> false
     }
 
     /**
@@ -146,7 +189,112 @@ class VoiceAccessibilityService : AccessibilityService() {
         toXRatio: Float,
         toYRatio: Float,
         durationMillis: Long,
+    ): Boolean = dispatchSingleStroke(
+        fromXRatio = fromXRatio,
+        fromYRatio = fromYRatio,
+        toXRatio = toXRatio,
+        toYRatio = toYRatio,
+        start = 0L,
+        duration = durationMillis,
+    )
+
+    /** Un appui simple : un trait de longueur nulle, sur une durée très courte. */
+    private fun tap(xRatio: Float, yRatio: Float): Boolean =
+        dispatchSingleStroke(xRatio, yRatio, xRatio, yRatio, 0L, TAP_DURATION_MILLIS)
+
+    /** Un appui long : même chose, mais le doigt reste posé. */
+    private fun longPress(xRatio: Float, yRatio: Float): Boolean =
+        dispatchSingleStroke(xRatio, yRatio, xRatio, yRatio, 0L, LONG_PRESS_DURATION_MILLIS)
+
+    /** Deux appuis successifs : deux traits décalés dans le temps. */
+    private fun doubleTap(xRatio: Float, yRatio: Float): Boolean {
+        val gesture = GestureDescription.Builder()
+            .addStroke(stroke(xRatio, yRatio, xRatio, yRatio, 0L, TAP_DURATION_MILLIS))
+            .addStroke(stroke(xRatio, yRatio, xRatio, yRatio, TAP_GAP_MILLIS, TAP_DURATION_MILLIS))
+            .build()
+        return dispatchGesture(gesture, null, null)
+    }
+
+    /**
+     * Deux tirages successifs depuis le haut : le second ouvre les réglages
+     * rapides complets.
+     *
+     * Les deux traits sont dans le même geste, décalés dans le temps : deux
+     * appels séparés pourraient se chevaucher.
+     */
+    private fun twoStepPull(): Boolean {
+        val gesture = GestureDescription.Builder()
+            .addStroke(stroke(0.5f, 0.005f, 0.5f, 0.55f, 0L, PULL_DURATION_MILLIS))
+            .addStroke(
+                stroke(
+                    fromXRatio = 0.5f, fromYRatio = 0.005f,
+                    toXRatio = 0.5f, toYRatio = 0.75f,
+                    start = PULL_DURATION_MILLIS + PULL_GAP_MILLIS,
+                    duration = PULL_DURATION_MILLIS,
+                ),
+            )
+            .build()
+        return dispatchGesture(gesture, null, null)
+    }
+
+    /** Défilement répété, pour aller d'un bout à l'autre d'une page. */
+    private fun repeatedSwipe(fromYRatio: Float, toYRatio: Float): Boolean {
+        val builder = GestureDescription.Builder()
+        repeat(SCROLL_REPEAT_COUNT) { index ->
+            builder.addStroke(
+                stroke(
+                    fromXRatio = 0.5f, fromYRatio = fromYRatio,
+                    toXRatio = 0.5f, toYRatio = toYRatio,
+                    start = index * SCROLL_STEP_GAP_MILLIS,
+                    duration = SCROLL_DURATION_MILLIS,
+                ),
+            )
+        }
+        return dispatchGesture(builder.build(), null, null)
+    }
+
+    /**
+     * Pincement à deux doigts : les doigts s'écartent pour zoomer, se rapprochent
+     * pour dézoomer.
+     *
+     * Les deux doigts sont simulés par deux traits verticaux symétriques, joués
+     * en parallèle — c'est ainsi qu'Android représente un pincement.
+     */
+    private fun pinch(outward: Boolean): Boolean {
+        val inner = if (outward) 0.45f else 0.25f
+        val outer = if (outward) 0.25f else 0.45f
+
+        val gesture = GestureDescription.Builder()
+            .addStroke(stroke(0.5f, inner, 0.5f, outer, 0L, PINCH_DURATION_MILLIS))
+            .addStroke(stroke(0.5f, 1f - inner, 0.5f, 1f - outer, 0L, PINCH_DURATION_MILLIS))
+            .build()
+        return dispatchGesture(gesture, null, null)
+    }
+
+    /** Exécute un geste d'un seul trait. */
+    private fun dispatchSingleStroke(
+        fromXRatio: Float,
+        fromYRatio: Float,
+        toXRatio: Float,
+        toYRatio: Float,
+        start: Long,
+        duration: Long,
     ): Boolean {
+        val gesture = GestureDescription.Builder()
+            .addStroke(stroke(fromXRatio, fromYRatio, toXRatio, toYRatio, start, duration))
+            .build()
+        return dispatchGesture(gesture, null, null)
+    }
+
+    /** Construit un trait de geste, en proportion de l'écran. */
+    private fun stroke(
+        fromXRatio: Float,
+        fromYRatio: Float,
+        toXRatio: Float,
+        toYRatio: Float,
+        start: Long,
+        duration: Long,
+    ): GestureDescription.StrokeDescription {
         val metrics = resources.displayMetrics
         val width = metrics.widthPixels.toFloat()
         val height = metrics.heightPixels.toFloat()
@@ -156,13 +304,7 @@ class VoiceAccessibilityService : AccessibilityService() {
             lineTo(toXRatio * width, toYRatio * height)
         }
 
-        val gesture = GestureDescription.Builder()
-            .addStroke(GestureDescription.StrokeDescription(path, 0L, durationMillis))
-            .build()
-
-        // Le troisième paramètre est le Handler qui recevra le compte rendu :
-        // null signifie « celui du service », ce qui nous convient.
-        return dispatchGesture(gesture, null, null)
+        return GestureDescription.StrokeDescription(path, start, duration)
     }
 
     companion object {
@@ -179,5 +321,29 @@ class VoiceAccessibilityService : AccessibilityService() {
 
         /** Un défilement de page : plus long et plus ample qu'un coup de doigt. */
         private const val SCROLL_DURATION_MILLIS = 350L
+
+        /** Un appui : le doigt touche brièvement. */
+        private const val TAP_DURATION_MILLIS = 60L
+
+        /** Un appui long : le doigt reste posé le temps qu'il faut. */
+        private const val LONG_PRESS_DURATION_MILLIS = 700L
+
+        /** Écart entre les deux appuis d'un double appui. */
+        private const val TAP_GAP_MILLIS = 140L
+
+        /** Tirage du volet depuis le bord supérieur. */
+        private const val PULL_DURATION_MILLIS = 280L
+
+        /** Écart entre les deux tirages des réglages rapides. */
+        private const val PULL_GAP_MILLIS = 350L
+
+        /** Nombre de défilements pour parcourir une page entière. */
+        private const val SCROLL_REPEAT_COUNT = 5
+
+        /** Écart entre deux défilements successifs. */
+        private const val SCROLL_STEP_GAP_MILLIS = 450L
+
+        /** Durée du pincement à deux doigts. */
+        private const val PINCH_DURATION_MILLIS = 320L
     }
 }

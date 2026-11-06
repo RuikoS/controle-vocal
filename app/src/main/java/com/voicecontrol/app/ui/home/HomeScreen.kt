@@ -719,6 +719,23 @@ private fun actionLabelRes(action: VoiceAction): Int = when (action) {
     VoiceAction.Home -> R.string.action_home
     VoiceAction.Recents -> R.string.action_recents
     VoiceAction.LockScreen -> R.string.action_lock_screen
+    VoiceAction.OpenNotifications -> R.string.action_open_notifications
+    VoiceAction.QuickSettings -> R.string.action_quick_settings
+    VoiceAction.Screenshot -> R.string.action_screenshot
+    VoiceAction.PowerMenu -> R.string.action_power_menu
+    VoiceAction.TapCenter -> R.string.action_tap_center
+    VoiceAction.LongPress -> R.string.action_long_press
+    VoiceAction.DoubleTap -> R.string.action_double_tap
+    VoiceAction.ScrollToTop -> R.string.action_scroll_to_top
+    VoiceAction.ScrollToBottom -> R.string.action_scroll_to_bottom
+    VoiceAction.ZoomIn -> R.string.action_zoom_in
+    VoiceAction.ZoomOut -> R.string.action_zoom_out
+    VoiceAction.VolumeUp -> R.string.action_volume_up
+    VoiceAction.VolumeDown -> R.string.action_volume_down
+    VoiceAction.VolumeMute -> R.string.action_volume_mute
+    VoiceAction.MediaPlayPause -> R.string.action_media_play_pause
+    VoiceAction.MediaNext -> R.string.action_media_next
+    VoiceAction.MediaPrevious -> R.string.action_media_previous
 }
 
 /**

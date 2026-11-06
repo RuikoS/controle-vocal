@@ -360,22 +360,40 @@ class VoiceListeningController(
 
     private fun onCommandPhrase(transcript: String) {
         val heard = transcript.trim()
-        // On compare la version corrigée, mais on affiche et on apprend ce qui a
-        // réellement été entendu.
-        val resolution = VoiceVocabulary.resolve(correctionsProvider(heard), learnedAliasesProvider())
 
-        applyResolution(resolution, heard)
+        // « puis », « ensuite »… : on exécute dans l'ordre. On compare la version
+        // corrigée, mais on affiche et on apprend ce qui a réellement été entendu.
+        val steps = VoiceVocabulary.splitSequence(heard)
 
-        // Une seule commande par mot-clé — mais seulement s'il y a un mot-clé.
+        var succeeded = true
+        var blocked = false
+
+        for (step in steps) {
+            if (blocked) break
+
+            when (val resolution = VoiceVocabulary.resolve(correctionsProvider(step), learnedAliasesProvider())) {
+                is VoiceVocabulary.Resolution.Single ->
+                    if (!execute(resolution.intent, step, resolution.learnedPhrase)) succeeded = false
+
+                is VoiceVocabulary.Resolution.Ambiguous -> {
+                    showAmbiguity(resolution)
+                    blocked = true
+                }
+
+                VoiceVocabulary.Resolution.None -> {
+                    showUnknown(step)
+                    blocked = true
+                }
+            }
+        }
+
         if (activationMode.value == ActivationMode.WakeWord) {
             enterWakeWordMode()
         }
 
-        // Le retour sonore est joué APRÈS la bascule : à cet instant, c'est le
-        // moteur local qui écoute, et un bip ne peut plus être pris pour une
-        // commande.
-        if (resolution !is VoiceVocabulary.Resolution.Ambiguous) {
-            val succeeded = resolution is VoiceVocabulary.Resolution.Single
+        // Pas de retour sonore quand on demande une précision : c'est l'écran qui
+        // parle, un bip par-dessus serait redondant.
+        if (!blocked) {
             playFeedback(if (succeeded) FeedbackCue.Success else FeedbackCue.Failure)
         }
     }
@@ -402,24 +420,33 @@ class VoiceListeningController(
                 }
             }
 
-            is VoiceVocabulary.Resolution.Ambiguous -> _state.update {
-                it.copy(
-                    status = ListeningStatus.Listening,
-                    partialText = "",
-                    unknownPhrase = null,
-                    ambiguity = Ambiguity(phrase = resolution.phrase, options = resolution.options),
-                    diagnostic = "Doute — ${resolution.options.size} actions proposées",
-                )
-            }
+            is VoiceVocabulary.Resolution.Ambiguous -> showAmbiguity(resolution)
 
-            VoiceVocabulary.Resolution.None -> _state.update {
-                it.copy(
-                    ambiguity = null,
-                    // La phrase devient la matière première de l'apprentissage.
-                    unknownPhrase = transcript.ifBlank { null },
-                    diagnostic = "Ignoré : « $transcript »",
-                )
-            }
+            VoiceVocabulary.Resolution.None -> showUnknown(transcript)
+        }
+    }
+
+    /** Plusieurs actions plausibles : on les propose, sans rien exécuter. */
+    private fun showAmbiguity(resolution: VoiceVocabulary.Resolution.Ambiguous) {
+        _state.update {
+            it.copy(
+                status = ListeningStatus.Listening,
+                partialText = "",
+                unknownPhrase = null,
+                ambiguity = Ambiguity(phrase = resolution.phrase, options = resolution.options),
+                diagnostic = "Doute — ${resolution.options.size} actions proposées",
+            )
+        }
+    }
+
+    /** Rien de compris : la phrase devient la matière première de l'apprentissage. */
+    private fun showUnknown(transcript: String) {
+        _state.update {
+            it.copy(
+                ambiguity = null,
+                unknownPhrase = transcript.ifBlank { null },
+                diagnostic = "Ignoré : « $transcript »",
+            )
         }
     }
 

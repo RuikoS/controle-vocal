@@ -41,4 +41,48 @@ enum class VoiceAction {
 
     /** Verrouillage de l'écran. */
     LockScreen,
+
+    // ---- Gestes système ----
+
+    /** Volet des notifications, tiré depuis le bord supérieur de l'écran. */
+    OpenNotifications,
+
+    /** Réglages rapides : deux tirages successifs depuis le haut. */
+    QuickSettings,
+
+    /** Capture d'écran (Android 11+). */
+    Screenshot,
+
+    /** Menu d'alimentation du système. */
+    PowerMenu,
+
+    /** Appui simple au centre de l'écran. */
+    TapCenter,
+
+    /** Appui long au centre. */
+    LongPress,
+
+    /** Double appui au centre. */
+    DoubleTap,
+
+    /** Remonter tout en haut de la page, par défilements répétés. */
+    ScrollToTop,
+
+    /** Descendre tout en bas de la page. */
+    ScrollToBottom,
+
+    /** Zoom avant, par pincement à deux doigts. */
+    ZoomIn,
+
+    /** Zoom arrière. */
+    ZoomOut,
+
+    // ---- Média et volume (aucune permission nécessaire) ----
+
+    VolumeUp,
+    VolumeDown,
+    VolumeMute,
+    MediaPlayPause,
+    MediaNext,
+    MediaPrevious,
 }

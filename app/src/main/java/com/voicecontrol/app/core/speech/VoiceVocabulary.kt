@@ -86,6 +86,95 @@ object VoiceVocabulary {
             action = VoiceAction.LockScreen,
             aliases = listOf("verrouille l'écran", "éteins l'écran"),
         ),
+
+        // ---- Gestes système ----
+        VoiceCommand(
+            phrase = "ouvre les notifications",
+            action = VoiceAction.OpenNotifications,
+            aliases = listOf("notifications", "affiche les notifications", "le volet", "panneau de notifications"),
+        ),
+        VoiceCommand(
+            phrase = "réglages rapides",
+            action = VoiceAction.QuickSettings,
+            aliases = listOf("ouvre les réglages rapides", "les raccourcis", "raccourcis système", "centre de contrôle"),
+        ),
+        VoiceCommand(
+            phrase = "capture d'écran",
+            action = VoiceAction.Screenshot,
+            aliases = listOf("fais une capture", "prends une capture", "screenshot", "capture l'écran"),
+        ),
+        VoiceCommand(
+            phrase = "menu d'alimentation",
+            action = VoiceAction.PowerMenu,
+            aliases = listOf("menu power", "options d'extinction", "menu éteindre"),
+        ),
+        VoiceCommand(
+            phrase = "appuie au centre",
+            action = VoiceAction.TapCenter,
+            aliases = listOf("appuie", "touche", "tape", "clique", "clic"),
+        ),
+        VoiceCommand(
+            phrase = "appui long",
+            action = VoiceAction.LongPress,
+            aliases = listOf("appuie longtemps", "maintiens", "reste appuyé", "clic long"),
+        ),
+        VoiceCommand(
+            phrase = "double appui",
+            action = VoiceAction.DoubleTap,
+            aliases = listOf("double tap", "double clic", "appuie deux fois", "tape deux fois"),
+        ),
+        VoiceCommand(
+            phrase = "tout en haut",
+            action = VoiceAction.ScrollToTop,
+            aliases = listOf("va tout en haut", "remonte tout en haut", "début de la page"),
+        ),
+        VoiceCommand(
+            phrase = "tout en bas",
+            action = VoiceAction.ScrollToBottom,
+            aliases = listOf("va tout en bas", "descends tout en bas", "fin de la page"),
+        ),
+        VoiceCommand(
+            phrase = "zoome",
+            action = VoiceAction.ZoomIn,
+            aliases = listOf("zoom", "zoom avant", "agrandis", "grossis", "plus grand"),
+        ),
+        VoiceCommand(
+            phrase = "dézoome",
+            action = VoiceAction.ZoomOut,
+            aliases = listOf("zoom arrière", "réduis", "éloigne", "plus petit"),
+        ),
+
+        // ---- Média et volume ----
+        VoiceCommand(
+            phrase = "monte le volume",
+            action = VoiceAction.VolumeUp,
+            aliases = listOf("augmente le volume", "plus fort", "monte le son", "volume plus"),
+        ),
+        VoiceCommand(
+            phrase = "baisse le volume",
+            action = VoiceAction.VolumeDown,
+            aliases = listOf("diminue le volume", "moins fort", "baisse le son", "volume moins"),
+        ),
+        VoiceCommand(
+            phrase = "coupe le son",
+            action = VoiceAction.VolumeMute,
+            aliases = listOf("mute", "muet", "silence", "mode silencieux", "mets en muet"),
+        ),
+        VoiceCommand(
+            phrase = "pause",
+            action = VoiceAction.MediaPlayPause,
+            aliases = listOf("mets en pause", "joue", "play", "reprends", "reprends la lecture"),
+        ),
+        VoiceCommand(
+            phrase = "musique suivante",
+            action = VoiceAction.MediaNext,
+            aliases = listOf("suivant", "chanson suivante", "piste suivante", "next", "passe la chanson"),
+        ),
+        VoiceCommand(
+            phrase = "musique précédente",
+            action = VoiceAction.MediaPrevious,
+            aliases = listOf("précédent", "chanson précédente", "piste précédente", "previous"),
+        ),
     )
 
     /** Verbes qui annoncent le lancement d'une application (écrits sans accent : la comparaison est normalisée). */
@@ -292,6 +381,25 @@ object VoiceVocabulary {
             .take(MAX_OPTIONS)
 
     /**
+     * Découpe une phrase en étapes, sur les mots de liaison.
+     *
+     * « ouvre YouTube **puis** verrouille » devient deux étapes exécutées dans
+     * l'ordre. Une seule étape qui échoue arrête la suite : mieux vaut ne rien
+     * faire à moitié que laisser l'utilisateur devant un résultat partiel.
+     *
+     * Le découpage se fait sur le texte ORIGINAL, pour ne pas abîmer la casse et
+     * la ponctuation de ce qui sera écrit (« écris Bonjour. »).
+     */
+    fun splitSequence(transcript: String): List<String> {
+        val parts = transcript.split(SEQUENCE_SEPARATORS)
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .take(MAX_SEQUENCE_STEPS)
+
+        return parts.ifEmpty { listOf(transcript.trim()) }
+    }
+
+    /**
      * Les formulations que le moteur en ligne doit **privilégier**.
      *
      * Ce n'est pas de l'entraînement, c'est de l'orientation : on indique au
@@ -396,6 +504,18 @@ object VoiceVocabulary {
 
     /** Trois choix au maximum : au-delà, on ne choisit plus, on devine. */
     private const val MAX_OPTIONS = 3
+
+    /** Une phrase ne déclenche pas une séquence sans fin. */
+    private const val MAX_SEQUENCE_STEPS = 4
+
+    /**
+     * Mots de liaison qui séparent deux étapes. Les formes longues passent en
+     * premier, sinon « et ensuite » serait coupé deux fois.
+     */
+    private val SEQUENCE_SEPARATORS = Regex(
+        "\\s+(?:et\\s+ensuite|et\\s+puis|et\\s+apr[eè]s|apr[eè]s\\s+[cç]a|puis|ensuite|apr[eè]s|enfin|pour\\s+finir|pis|et)\\s+",
+        RegexOption.IGNORE_CASE,
+    )
 
     private const val MIN_KEYWORD_LENGTH = 4
 

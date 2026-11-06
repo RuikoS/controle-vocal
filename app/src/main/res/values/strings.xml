@@ -79,6 +79,27 @@
     <string name="action_recents">Applications récentes</string>
     <string name="action_lock_screen">Verrouillage de l\'écran</string>
 
+    <!-- ===== Gestes systeme ===== -->
+    <string name="action_open_notifications">Ouvrir les notifications</string>
+    <string name="action_quick_settings">Réglages rapides</string>
+    <string name="action_screenshot">Capture d\'écran</string>
+    <string name="action_power_menu">Menu d\'alimentation</string>
+    <string name="action_tap_center">Appui au centre</string>
+    <string name="action_long_press">Appui long</string>
+    <string name="action_double_tap">Double appui</string>
+    <string name="action_scroll_to_top">Aller tout en haut</string>
+    <string name="action_scroll_to_bottom">Aller tout en bas</string>
+    <string name="action_zoom_in">Zoom avant</string>
+    <string name="action_zoom_out">Zoom arrière</string>
+
+    <!-- ===== Media et volume ===== -->
+    <string name="action_volume_up">Monter le volume</string>
+    <string name="action_volume_down">Baisser le volume</string>
+    <string name="action_volume_mute">Couper le son</string>
+    <string name="action_media_play_pause">Lecture / pause</string>
+    <string name="action_media_next">Piste suivante</string>
+    <string name="action_media_previous">Piste précédente</string>
+
     <!-- ===== Reglages : son de reveil ===== -->
     <string name="settings_wake_sound_title">Son de réveil</string>
     <string name="settings_wake_sound_hint">Le bip qui confirme que le mot-clé a été reconnu. Touchez un son pour l\'écouter.</string>
