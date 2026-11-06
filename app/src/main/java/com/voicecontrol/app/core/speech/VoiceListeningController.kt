@@ -51,6 +51,11 @@ class VoiceListeningController(
      * d'espérer un meilleur modèle.
      */
     private val correctionsProvider: (String) -> String = { it },
+    /**
+     * Dernier recours quand rien ne correspond : un modèle de langage, s'il est
+     * configuré. Null = pas d'IA, comportement inchangé.
+     */
+    private val aiFallback: AiFallback? = null,
     private val scope: CoroutineScope,
 ) {
 
@@ -381,8 +386,9 @@ class VoiceListeningController(
                 }
 
                 VoiceVocabulary.Resolution.None -> {
-                    showUnknown(step)
                     blocked = true
+                    // Dernier recours : le modèle de langage, s'il est configuré.
+                    requestAiFallback(step)
                 }
             }
         }
@@ -447,6 +453,42 @@ class VoiceListeningController(
                 unknownPhrase = transcript.ifBlank { null },
                 diagnostic = "Ignoré : « $transcript »",
             )
+        }
+    }
+
+    /**
+     * Dernier recours : demander au modèle de langage ce que la phrase veut dire.
+     *
+     * Sa réponse est une **proposition**, jamais une exécution : elle s'affiche
+     * comme un choix à valider. C'est ce qui rend l'IA utilisable malgré ses
+     * erreurs — et la validation vaut apprentissage, donc la phrase fonctionnera
+     * ensuite sans modèle.
+     */
+    private fun requestAiFallback(phrase: String) {
+        val fallback = aiFallback
+        if (fallback == null) {
+            showUnknown(phrase)
+            return
+        }
+
+        _state.update { it.copy(diagnostic = "Interrogation de l'IA…") }
+
+        scope.launch {
+            val action = fallback.resolveAction(phrase)
+
+            if (action == null) {
+                showUnknown(phrase)
+            } else {
+                _state.update {
+                    it.copy(
+                        status = ListeningStatus.Listening,
+                        partialText = "",
+                        unknownPhrase = null,
+                        ambiguity = Ambiguity(phrase = phrase, options = listOf(action)),
+                        diagnostic = "Proposition de l'IA — à confirmer",
+                    )
+                }
+            }
         }
     }
 

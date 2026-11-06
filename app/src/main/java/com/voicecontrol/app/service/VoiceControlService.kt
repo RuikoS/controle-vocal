@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import androidx.core.content.ContextCompat
+import com.voicecontrol.app.BuildConfig
 import com.voicecontrol.app.R
 import com.voicecontrol.app.VoiceControlApp
 import com.voicecontrol.app.core.actions.VoiceAction
@@ -15,6 +16,7 @@ import com.voicecontrol.app.core.speech.VoiceVocabulary
 import com.voicecontrol.app.data.source.AndroidActionPerformer
 import com.voicecontrol.app.data.source.AndroidSpeechRecognizer
 import com.voicecontrol.app.data.source.InstalledApps
+import com.voicecontrol.app.data.source.LlmIntentResolver
 import com.voicecontrol.app.data.source.ToneSoundFeedback
 import com.voicecontrol.app.data.source.VoskSpeechRecognizer
 import kotlinx.coroutines.CoroutineScope
@@ -89,6 +91,13 @@ class VoiceControlService : Service() {
             performer = AndroidActionPerformer(applicationContext, app.vocabulary),
             // Corrections des erreurs de transcription connues (« you tube »).
             correctionsProvider = app.vocabulary::normalizeAndCorrect,
+            // Filet de sécurité IA : actif seulement si local.properties contient
+            // un point d'accès et un modèle.
+            aiFallback = LlmIntentResolver(
+                baseUrl = BuildConfig.LLM_BASE_URL,
+                model = BuildConfig.LLM_MODEL,
+                apiKey = BuildConfig.LLM_API_KEY,
+            ).takeIf { it.isConfigured },
             // Le bip d'activation, et les sons de retour de commande.
             soundFeedback = ToneSoundFeedback(settings),
             // Le mot-clé se règle depuis l'écran : on le relit à chaque usage.

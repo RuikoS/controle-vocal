@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     // Le plugin Kotlin ("org.jetbrains.kotlin.android") n'est PLUS nécessaire :
@@ -8,6 +10,19 @@ plugins {
     // incompatible avec le Kotlin intégré d'AGP 9.
     alias(libs.plugins.ksp)
 }
+
+/**
+ * Le fournisseur d'IA se configure dans `local.properties`, qui n'est pas
+ * versionné : la clé ne finit donc jamais sur GitHub.
+ */
+// Dans un script Gradle Kotlin, `java` désigne l'extension du plugin Java et
+// masque le paquet java.* : d'où l'import explicite ci-dessus.
+val llmProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
+fun llmValue(key: String): String = (llmProperties.getProperty(key) ?: "").trim()
 
 android {
     namespace = "com.voicecontrol.app"
@@ -27,7 +42,13 @@ android {
         // Affiché en bas de l'écran d'accueil : une application installée à la
         // main n'a aucune vitrine pour dire de quelle version il s'agit, et on
         // finit par tester une ancienne sans le savoir.
-        versionName = "0.18.0"
+        versionName = "0.19.0"
+
+        // Injectés dans BuildConfig. Vides par défaut : le filet de sécurité IA
+        // reste alors éteint, et l'application se comporte comme avant.
+        buildConfigField("String", "LLM_BASE_URL", "\"${llmValue("llm.baseUrl")}\"")
+        buildConfigField("String", "LLM_MODEL", "\"${llmValue("llm.model")}\"")
+        buildConfigField("String", "LLM_API_KEY", "\"${llmValue("llm.apiKey")}\"")
     }
 
     buildTypes {
