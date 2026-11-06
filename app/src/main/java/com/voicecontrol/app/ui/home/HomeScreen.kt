@@ -196,11 +196,13 @@ private fun HomeContent(
 
             ServiceToggleCard(uiState = uiState, onToggleService = onToggleService)
 
-            // Déclenchement manuel : l'alternative au mot-clé. Toujours visible,
-            // parce qu'elle sert dans tous les modes, même quand le service écoute.
+            // Déclenchement manuel : l'alternative au mot-clé. Désactivé en
+            // écoute permanente, où le moteur écoute déjà — un bouton sans effet
+            // serait une promesse non tenue.
             Button(
                 onClick = onCaptureCommand,
-                enabled = uiState.serviceRunning,
+                enabled = uiState.serviceRunning &&
+                    uiState.activationMode != ActivationMode.AlwaysListening,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(stringResource(R.string.capture_button))
