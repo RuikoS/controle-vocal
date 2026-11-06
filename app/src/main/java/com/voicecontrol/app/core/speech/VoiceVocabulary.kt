@@ -292,6 +292,16 @@ object VoiceVocabulary {
             .take(MAX_OPTIONS)
 
     /**
+     * Les formulations que le moteur en ligne doit **privilégier**.
+     *
+     * Ce n'est pas de l'entraînement, c'est de l'orientation : on indique au
+     * moteur ce qu'on s'attend à entendre, et il favorise ces mots au décodage.
+     * Les commandes et leurs synonymes en bénéficient directement.
+     */
+    fun biasVocabulary(): List<String> =
+        COMMANDS.flatMap { command -> listOf(command.phrase) + command.aliases }
+
+    /**
      * Transforme une phrase en intention **structurée**, ou null.
      *
      * Seuls les verbes à paramètre sont traités ici : « écris … » et « ouvre … ».

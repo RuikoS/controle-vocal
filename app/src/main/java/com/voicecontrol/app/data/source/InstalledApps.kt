@@ -21,8 +21,6 @@ class InstalledApps(private val context: Context) {
     /** Une application lançable : ce qu'on montre, et ce qu'on lance. */
     data class AppTarget(val label: String, val packageName: String)
 
-    private var cache: List<AppTarget>? = null
-
     /**
      * Retrouve l'application dont le nom ressemble le plus à [spokenName].
      * Renvoie null si rien de convaincant n'a été trouvé — mieux vaut ne rien
@@ -37,8 +35,15 @@ class InstalledApps(private val context: Context) {
         return apps[index]
     }
 
+    /**
+     * Les libellés des applications installées, pour les transmettre au moteur
+     * de reconnaissance : c'est ce qui lui fait écrire « YouTube » plutôt que
+     * d'approximer « you tube ».
+     */
+    fun labels(): List<String> = launcherApps().map { it.label }
+
     private fun launcherApps(): List<AppTarget> {
-        cache?.let { return it }
+        cachedApps?.let { return it }
 
         val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         val installed = context.packageManager
@@ -53,7 +58,7 @@ class InstalledApps(private val context: Context) {
             .distinctBy { it.packageName }
             .sortedBy { it.label }
 
-        cache = installed
+        cachedApps = installed
         return installed
     }
 
@@ -79,6 +84,22 @@ class InstalledApps(private val context: Context) {
     }
 
     private companion object {
+        /**
+         * Cache partagé par toutes les instances : la liste ne change pas en
+         * cours d'exécution, et l'interroger coûte un aller-retour avec le
+         * système — trop cher pour être refait à chaque commande.
+         */
+        @Volatile
+        private var cachedApps: List<AppTarget>? = null
+
+        /**
+         * À appeler quand une application est installée ou désinstallée, sinon
+         * la liste resterait celle du démarrage.
+         */
+        fun invalidate() {
+            cachedApps = null
+        }
+
         /**
          * Volontairement limité aux articles et au mot « application » : des
          * raccourcis comme « app » rogneraient le début de vrais noms.

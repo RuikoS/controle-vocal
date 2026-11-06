@@ -11,8 +11,10 @@ import com.voicecontrol.app.core.actions.VoiceAction
 import com.voicecontrol.app.core.notifications.NotificationHelper
 import com.voicecontrol.app.core.speech.ListeningState
 import com.voicecontrol.app.core.speech.VoiceListeningController
+import com.voicecontrol.app.core.speech.VoiceVocabulary
 import com.voicecontrol.app.data.source.AndroidActionPerformer
 import com.voicecontrol.app.data.source.AndroidSpeechRecognizer
+import com.voicecontrol.app.data.source.InstalledApps
 import com.voicecontrol.app.data.source.ToneSoundFeedback
 import com.voicecontrol.app.data.source.VoskSpeechRecognizer
 import kotlinx.coroutines.CoroutineScope
@@ -60,6 +62,7 @@ class VoiceControlService : Service() {
         val app = application as VoiceControlApp
         val settings = app.settings
         val learning = app.learning
+        val installedApps = InstalledApps(applicationContext)
 
         val listeningController = VoiceListeningController(
             // VEILLE : moteur local et hors ligne. Il tourne en permanence pour
@@ -67,7 +70,20 @@ class VoiceControlService : Service() {
             wakeWordRecognizer = VoskSpeechRecognizer(applicationContext, scope),
             // COMMANDE : moteur d'Android. Sa précision est bien meilleure, et
             // il n'est sollicité que quelques secondes après le mot-clé.
-            commandRecognizer = AndroidSpeechRecognizer(applicationContext, scope),
+            commandRecognizer = AndroidSpeechRecognizer(
+                context = applicationContext,
+                scope = scope,
+                // Orientation du vocabulaire : commandes, formulations apprises
+                // et noms des applications installées. C'est ce qui fait écrire
+                // « YouTube » là où le moteur aurait approximé « you tube ».
+                biasProvider = {
+                    buildList {
+                        addAll(VoiceVocabulary.biasVocabulary())
+                        addAll(learning.learnedAliases.value.map { it.phrase })
+                        addAll(installedApps.labels().take(MAX_APP_BIAS))
+                    }
+                },
+            ),
             // Gestes et écriture par l'accessibilité, lancement d'application par
             // le gestionnaire de paquets.
             performer = AndroidActionPerformer(applicationContext),
@@ -129,6 +145,13 @@ class VoiceControlService : Service() {
 
         /** Demande de capture manuelle, déclenchée par un bouton. */
         private const val EXTRA_CAPTURE = "extra_capture"
+
+        /**
+         * Nombre maximal de noms d'applications transmis comme orientation.
+         * Le reste de la liste est occupé par les commandes et les formulations
+         * apprises, qui comptent davantage.
+         */
+        private const val MAX_APP_BIAS = 60
 
         /**
          * État observable du service, exposé à l'UI.

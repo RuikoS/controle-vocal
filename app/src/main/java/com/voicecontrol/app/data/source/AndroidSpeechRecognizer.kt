@@ -2,6 +2,7 @@ package com.voicecontrol.app.data.source
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -41,6 +42,14 @@ import kotlinx.coroutines.launch
 class AndroidSpeechRecognizer(
     private val context: Context,
     private val scope: CoroutineScope,
+    /**
+     * Fournit les mots et expressions que le moteur doit privilégier.
+     *
+     * C'est de l'**orientation**, pas de l'entraînement : on ne modifie pas le
+     * modèle, on lui indique ce qu'on s'attend à entendre. Les noms propres
+     * (« YouTube ») et les commandes en bénéficient directement.
+     */
+    private val biasProvider: () -> List<String> = { emptyList() },
 ) : VoiceRecognizer, RecognitionListener {
 
     // Buffer de secours : évite de perdre un événement si le collecteur est
@@ -127,6 +136,19 @@ class AndroidSpeechRecognizer(
             // pendant qu'on parle plutôt qu'à la fin.
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+
+            // ORIENTATION DU VOCABULAIRE (Android 13+).
+            //
+            // Ce n'est pas de l'entraînement : on ne touche pas au modèle, on lui
+            // indique ce qu'on s'attend à entendre. Les noms propres (« YouTube »)
+            // et les commandes sont alors favorisées au décodage, au lieu d'être
+            // approximés (« you tube »).
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                val bias = biasProvider().take(MAX_BIAS_STRINGS)
+                if (bias.isNotEmpty()) {
+                    putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS, ArrayList(bias))
+                }
+            }
 
             // NE JAMAIS mettre EXTRA_PREFER_OFFLINE à true ici.
             // Malgré son nom, cet extra signifie « n'utiliser QUE le moteur hors
@@ -239,6 +261,12 @@ class AndroidSpeechRecognizer(
     private companion object {
         /** Le français, explicitement. */
         const val FRENCH_LANGUAGE_TAG = "fr-FR"
+
+        /**
+         * Nombre maximal d'expressions transmises au moteur.
+         * Au-delà, la liste devient un bruit pour le décodeur plutôt qu'une aide.
+         */
+        const val MAX_BIAS_STRINGS = 80
 
         /** Après du silence, on réécoute presque tout de suite. */
         const val SILENCE_RESTART_DELAY_MILLIS = 250L
