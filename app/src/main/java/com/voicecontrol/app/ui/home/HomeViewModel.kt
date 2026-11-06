@@ -7,6 +7,7 @@ import com.voicecontrol.app.BuildConfig
 import com.voicecontrol.app.VoiceControlApp
 import com.voicecontrol.app.core.actions.VoiceAction
 import com.voicecontrol.app.core.permissions.PermissionUtils
+import com.voicecontrol.app.core.speech.ActivationMode
 import com.voicecontrol.app.core.speech.WakeSound
 import com.voicecontrol.app.data.source.ToneSoundFeedback
 import com.voicecontrol.app.service.VoiceAccessibilityService
@@ -59,11 +60,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val settingsState = combine(
         app.settings.wakeSound,
         app.settings.wakeWord,
+        app.settings.activationMode,
         dismissedUnknown,
-    ) { wakeSound, wakeWord, dismissed ->
+    ) { wakeSound, wakeWord, activationMode, dismissed ->
         SettingsState(
             wakeSound = wakeSound,
             wakeWord = wakeWord,
+            activationMode = activationMode,
             dismissedUnknown = dismissed,
         )
     }
@@ -90,6 +93,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             appVersion = appVersion,
             wakeSound = settings.wakeSound,
             wakeWord = settings.wakeWord,
+            activationMode = settings.activationMode,
             pendingCorrection = listening.unknownPhrase
                 ?.takeIf { it != settings.dismissedUnknown },
             pendingAmbiguity = listening.ambiguity
@@ -156,6 +160,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
+     * Change le mode d'écoute. Le service l'observe : la bascule est immédiate,
+     * sans redémarrer quoi que ce soit.
+     */
+    fun setActivationMode(mode: ActivationMode) {
+        app.settings.setActivationMode(mode)
+    }
+
+    /**
      * Apprend qu'une phrase non comprise correspond à une action.
      *
      * Aucune confirmation supplémentaire : l'utilisateur vient d'exprimer ce que
@@ -204,6 +216,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private data class SettingsState(
         val wakeSound: WakeSound,
         val wakeWord: String,
+        val activationMode: ActivationMode,
         val dismissedUnknown: String?,
     )
 

@@ -75,6 +75,8 @@ class VoiceControlService : Service() {
             soundFeedback = ToneSoundFeedback(settings),
             // Le mot-clé se règle depuis l'écran : on le relit à chaque usage.
             wakeWordProvider = { settings.wakeWord.value },
+            // Mode d'écoute : observé, pour basculer immédiatement au changement.
+            activationMode = settings.activationMode,
             // Les formulations apprises, pour que les corrections soient
             // appliquées immédiatement.
             learnedAliasesProvider = { learning.learnedAliases.value },

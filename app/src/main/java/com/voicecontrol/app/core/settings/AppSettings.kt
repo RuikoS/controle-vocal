@@ -2,6 +2,7 @@ package com.voicecontrol.app.core.settings
 
 import android.content.Context
 import com.voicecontrol.app.core.actions.VoiceAction
+import com.voicecontrol.app.core.speech.ActivationMode
 import com.voicecontrol.app.core.speech.LearnedAlias
 import com.voicecontrol.app.core.speech.WakeSound
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +36,11 @@ class AppSettings(context: Context) {
     /** Mot-clé qui réveille l'application. */
     val wakeWord: StateFlow<String> = _wakeWord.asStateFlow()
 
+    private val _activationMode = MutableStateFlow(readActivationMode())
+
+    /** Faut-il un mot-clé, ou l'écoute est-elle permanente ? */
+    val activationMode: StateFlow<ActivationMode> = _activationMode.asStateFlow()
+
     fun setWakeSound(sound: WakeSound) {
         _wakeSound.value = sound
         preferences.edit().putString(KEY_WAKE_SOUND, sound.name).apply()
@@ -57,6 +63,16 @@ class AppSettings(context: Context) {
 
     private fun readWakeWord(): String =
         preferences.getString(KEY_WAKE_WORD, null)?.takeIf { it.isNotBlank() } ?: DEFAULT_WAKE_WORD
+
+    fun setActivationMode(mode: ActivationMode) {
+        _activationMode.value = mode
+        preferences.edit().putString(KEY_ACTIVATION_MODE, mode.name).apply()
+    }
+
+    private fun readActivationMode(): ActivationMode {
+        val stored = preferences.getString(KEY_ACTIVATION_MODE, null) ?: return ActivationMode.DEFAULT
+        return ActivationMode.entries.firstOrNull { it.name == stored } ?: ActivationMode.DEFAULT
+    }
 
     /**
      * Récupère les apprentissages de l'ancien stockage (avant Room) et les efface.
@@ -114,6 +130,7 @@ class AppSettings(context: Context) {
         private const val PREFERENCES_NAME = "voice_control_settings"
         private const val KEY_WAKE_SOUND = "wake_sound"
         private const val KEY_WAKE_WORD = "wake_word"
+        private const val KEY_ACTIVATION_MODE = "activation_mode"
         private const val KEY_LEGACY_LEARNED_ALIASES = "learned_aliases"
     }
 }

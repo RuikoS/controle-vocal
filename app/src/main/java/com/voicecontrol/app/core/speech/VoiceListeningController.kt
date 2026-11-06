@@ -37,6 +37,8 @@ class VoiceListeningController(
     private val soundFeedback: SoundFeedback,
     /** Fournit le mot-clé courant : il peut changer depuis les réglages. */
     private val wakeWordProvider: () -> String,
+    /** Faut-il un mot-clé, ou l'écoute est-elle permanente ? Observé pour réagir au changement. */
+    private val activationMode: StateFlow<ActivationMode>,
     /** Fournit les formulations apprises des corrections de l'utilisateur. */
     private val learnedAliasesProvider: () -> List<LearnedAlias>,
     /** Signale qu'une formulation apprise vient de servir, pour son compteur. */
@@ -59,6 +61,15 @@ class VoiceListeningController(
     private var commandJob: Job? = null
     private var switchJob: Job? = null
     private var windowJob: Job? = null
+    private var activationJob: Job? = null
+
+    /**
+     * Instant jusqu'auquel les transcriptions sont ignorées.
+     *
+     * En écoute permanente, le téléphone émet ses propres bips : sans ce filtre,
+     * il les capterait et pourrait les prendre pour des commandes.
+     */
+    private var ignoreResultsUntil = 0L
 
     /** Démarre la veille. Sans effet si elle tourne déjà. */
     fun start() {
@@ -68,7 +79,10 @@ class VoiceListeningController(
         wakeWordJob = scope.launch { wakeWordRecognizer.events.collect(::onWakeWordEvent) }
         commandJob = scope.launch { commandRecognizer.events.collect(::onCommandEvent) }
 
-        enterWakeWordMode()
+        // Le mode d'écoute peut changer à tout moment depuis les réglages : on
+        // l'observe. Le flux émet immédiatement sa valeur courante, ce qui
+        // déclenche le premier démarrage.
+        activationJob = scope.launch { activationMode.collect(::onActivationModeChanged) }
     }
 
     /** Arrête l'écoute mais garde le matériel : un [start] peut suivre. */
@@ -83,6 +97,8 @@ class VoiceListeningController(
         switchJob = null
         windowJob?.cancel()
         windowJob = null
+        activationJob?.cancel()
+        activationJob = null
 
         wakeWordRecognizer.stop()
         commandRecognizer.stop()
@@ -111,6 +127,47 @@ class VoiceListeningController(
     // ------------------------------------------------------------------
     // Passation de micro entre les deux moteurs
     // ------------------------------------------------------------------
+
+    /** Le réglage d'écoute a changé : on bascule vers le bon moteur. */
+    private fun onActivationModeChanged(newMode: ActivationMode) {
+        if (!started) return
+
+        when (newMode) {
+            ActivationMode.WakeWord -> enterWakeWordMode()
+            ActivationMode.AlwaysListening -> enterPermanentListening()
+        }
+    }
+
+    /**
+     * Écoute permanente : le moteur en ligne prend le micro et ne le rend plus.
+     *
+     * Pas de bip de réveil ici, et pas de fenêtre bornée : il n'y a pas de
+     * « moment pour parler », on est déjà à l'écoute. C'est le mode qui coûte le
+     * plus cher en batterie, d'où son statut d'option explicite.
+     */
+    private fun enterPermanentListening() {
+        mode = Mode.Command
+        windowJob?.cancel()
+        windowJob = null
+
+        switchJob?.cancel()
+        switchJob = scope.launch {
+            wakeWordRecognizer.stop()
+            delay(MICROPHONE_HANDOVER_MILLIS)
+            if (mode != Mode.Command) return@launch
+
+            commandRecognizer.start()
+            _state.update {
+                it.copy(
+                    status = ListeningStatus.Listening,
+                    partialText = "",
+                    diagnostic = null,
+                    unknownPhrase = null,
+                    ambiguity = null,
+                )
+            }
+        }
+    }
 
     private fun enterWakeWordMode() {
         mode = Mode.WakeWord
@@ -256,7 +313,11 @@ class VoiceListeningController(
 
             is SpeechEvent.PartialResult -> _state.update { it.copy(partialText = event.text) }
 
-            is SpeechEvent.FinalResult -> onCommandPhrase(event.text)
+            is SpeechEvent.FinalResult -> {
+                // En écoute permanente, on ignore ce qui arrive juste après un
+                // bip émis par le téléphone lui-même.
+                if (System.currentTimeMillis() >= ignoreResultsUntil) onCommandPhrase(event.text)
+            }
 
             is SpeechEvent.Diagnostic -> _state.update { it.copy(diagnostic = event.message) }
 
@@ -280,15 +341,17 @@ class VoiceListeningController(
 
         applyResolution(resolution, heard)
 
-        // Une seule commande par mot-clé : il faut redire le mot-clé.
-        enterWakeWordMode()
+        // Une seule commande par mot-clé — mais seulement s'il y a un mot-clé.
+        if (activationMode.value == ActivationMode.WakeWord) {
+            enterWakeWordMode()
+        }
 
         // Le retour sonore est joué APRÈS la bascule : à cet instant, c'est le
         // moteur local qui écoute, et un bip ne peut plus être pris pour une
         // commande.
         if (resolution !is VoiceVocabulary.Resolution.Ambiguous) {
             val succeeded = resolution is VoiceVocabulary.Resolution.Single
-            soundFeedback.play(if (succeeded) FeedbackCue.Success else FeedbackCue.Failure)
+            playFeedback(if (succeeded) FeedbackCue.Success else FeedbackCue.Failure)
         }
     }
 
@@ -310,7 +373,7 @@ class VoiceListeningController(
                 // En veille (mot-clé et commande d'une traite), le retour sonore
                 // doit être joué tout de suite.
                 if (mode == Mode.WakeWord) {
-                    soundFeedback.play(if (succeeded) FeedbackCue.Success else FeedbackCue.Failure)
+                    playFeedback(if (succeeded) FeedbackCue.Success else FeedbackCue.Failure)
                 }
             }
 
@@ -333,6 +396,18 @@ class VoiceListeningController(
                 )
             }
         }
+    }
+
+    /**
+     * Joue un retour sonore en s'assurant que le moteur ne l'entendra pas.
+     *
+     * En écoute permanente, il n'y a pas de bascule de micro entre le son et
+     * l'écoute : sans cette précaution, le bip serait transcrit et pourrait
+     * devenir une commande.
+     */
+    private fun playFeedback(cue: FeedbackCue) {
+        ignoreResultsUntil = System.currentTimeMillis() + SOUND_SUPPRESSION_MILLIS
+        soundFeedback.play(cue)
     }
 
     /** Exécute l'intention, rend compte du résultat, et dit si elle a abouti. */
@@ -377,5 +452,8 @@ class VoiceListeningController(
 
         /** Durée maximale d'attente d'une commande après le mot-clé. */
         const val COMMAND_WINDOW_MILLIS = 8_000L
+
+        /** Fenêtre pendant laquelle on ignore les transcriptions, après un bip. */
+        const val SOUND_SUPPRESSION_MILLIS = 700L
     }
 }

@@ -1,6 +1,7 @@
 package com.voicecontrol.app.ui.home
 
 import com.voicecontrol.app.core.settings.AppSettings
+import com.voicecontrol.app.core.speech.ActivationMode
 import com.voicecontrol.app.core.speech.Ambiguity
 import com.voicecontrol.app.core.speech.ListeningState
 import com.voicecontrol.app.core.speech.WakeSound
@@ -24,6 +25,7 @@ import com.voicecontrol.app.core.speech.WakeSound
  * @property pendingCorrection phrase non comprise, en attente d'être rattachée
  *           à une action par l'utilisateur.
  * @property pendingAmbiguity phrase comprise à moitié, avec les actions à proposer.
+ * @property activationMode faut-il un mot-clé, ou l'écoute est-elle permanente ?
  */
 data class HomeUiState(
     val serviceRunning: Boolean = false,
@@ -34,6 +36,7 @@ data class HomeUiState(
     val appVersion: String = "",
     val wakeSound: WakeSound = WakeSound.DEFAULT,
     val wakeWord: String = AppSettings.DEFAULT_WAKE_WORD,
+    val activationMode: ActivationMode = ActivationMode.DEFAULT,
     val pendingCorrection: String? = null,
     val pendingAmbiguity: Ambiguity? = null,
 ) {

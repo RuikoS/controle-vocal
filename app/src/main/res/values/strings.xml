@@ -95,6 +95,13 @@
     <string name="settings_save">Enregistrer</string>
     <string name="settings_cancel">Annuler</string>
 
+    <!-- ===== Reglages : mode d'ecoute ===== -->
+    <string name="activation_title">Mode d\'écoute</string>
+    <string name="activation_wake_word">Mot-clé requis</string>
+    <string name="activation_wake_word_hint">Le moteur local guette le mot-clé en permanence. Seule la commande part sur Internet, et le téléphone n\'obéit pas à une phrase entendue par hasard.</string>
+    <string name="activation_always">Toujours à l\'écoute</string>
+    <string name="activation_always_hint">Les commandes s\'exécutent sans mot-clé. Plus pratique pour enchaîner, mais le moteur en ligne reste actif en permanence : batterie, et tout ce qui est dit à portée est transcrit par le service en ligne.</string>
+
     <!-- ===== Apprentissage des phrases non comprises ===== -->
     <string name="correction_title">Je n\'ai pas compris</string>
     <string name="correction_hint">« %1$s » ne correspond à aucune commande. Choisissez ce que vous vouliez dire : ce sera appris immédiatement, et les formulations proches marcheront aussi.</string>

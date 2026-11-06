@@ -58,6 +58,7 @@ import com.voicecontrol.app.R
 import com.voicecontrol.app.core.actions.VoiceAction
 import com.voicecontrol.app.core.actions.VoiceIntent
 import com.voicecontrol.app.core.permissions.PermissionUtils
+import com.voicecontrol.app.core.speech.ActivationMode
 import com.voicecontrol.app.core.speech.Ambiguity
 import com.voicecontrol.app.core.speech.ListeningState
 import com.voicecontrol.app.core.speech.ListeningStatus
@@ -123,6 +124,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         onBindUnknownPhrase = viewModel::bindUnknownPhrase,
         onDismissCorrection = viewModel::dismissCorrection,
         onChooseSuggestion = viewModel::chooseSuggestion,
+        onSelectActivationMode = viewModel::setActivationMode,
     )
 }
 
@@ -143,6 +145,7 @@ private fun HomeContent(
     onBindUnknownPhrase: (String, VoiceAction) -> Unit = { _, _ -> },
     onDismissCorrection: (String) -> Unit = {},
     onChooseSuggestion: (VoiceAction) -> Unit = {},
+    onSelectActivationMode: (ActivationMode) -> Unit = {},
 ) {
     // Les trois étapes de l'assistant de configuration.
     val permissionItems = listOf(
@@ -216,6 +219,11 @@ private fun HomeContent(
             WakeSoundCard(selected = uiState.wakeSound, onSelect = onSelectWakeSound)
 
             WakeWordCard(wakeWord = uiState.wakeWord, onSave = onSaveWakeWord)
+
+            ActivationModeCard(
+                selected = uiState.activationMode,
+                onSelect = onSelectActivationMode,
+            )
 
             PermissionAssistant(permissionItems = permissionItems)
 
@@ -494,6 +502,70 @@ private fun CorrectionCard(
             }
         }
     }
+}
+
+/**
+ * Choix du mode d'écoute.
+ *
+ * Arbitrage que l'utilisateur est seul à pouvoir faire : le mot-clé protège la
+ * batterie et la vie privée, l'écoute permanente évite de le répéter quand on
+ * enchaîne les ordres. Les deux sont légitimes selon le moment.
+ */
+@Composable
+private fun ActivationModeCard(selected: ActivationMode, onSelect: (ActivationMode) -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.activation_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+
+            ActivationMode.entries.forEach { mode ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectable(
+                            selected = mode == selected,
+                            onClick = { onSelect(mode) },
+                        ),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    RadioButton(selected = mode == selected, onClick = null)
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            // Aligne le texte sur la pastille du bouton radio.
+                            .padding(top = 12.dp),
+                    ) {
+                        Text(
+                            text = stringResource(activationLabelRes(mode)),
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Text(
+                            text = stringResource(activationHintRes(mode)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Libellé d'un mode d'écoute. */
+private fun activationLabelRes(mode: ActivationMode): Int = when (mode) {
+    ActivationMode.WakeWord -> R.string.activation_wake_word
+    ActivationMode.AlwaysListening -> R.string.activation_always
+}
+
+/** Explication d'un mode d'écoute, avec son compromis. */
+private fun activationHintRes(mode: ActivationMode): Int = when (mode) {
+    ActivationMode.WakeWord -> R.string.activation_wake_word_hint
+    ActivationMode.AlwaysListening -> R.string.activation_always_hint
 }
 
 /**
