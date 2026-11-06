@@ -125,6 +125,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
         onDismissCorrection = viewModel::dismissCorrection,
         onChooseSuggestion = viewModel::chooseSuggestion,
         onSelectActivationMode = viewModel::setActivationMode,
+        onCaptureCommand = viewModel::captureCommand,
     )
 }
 
@@ -146,6 +147,7 @@ private fun HomeContent(
     onDismissCorrection: (String) -> Unit = {},
     onChooseSuggestion: (VoiceAction) -> Unit = {},
     onSelectActivationMode: (ActivationMode) -> Unit = {},
+    onCaptureCommand: () -> Unit = {},
 ) {
     // Les trois étapes de l'assistant de configuration.
     val permissionItems = listOf(
@@ -193,6 +195,16 @@ private fun HomeContent(
             )
 
             ServiceToggleCard(uiState = uiState, onToggleService = onToggleService)
+
+            // Déclenchement manuel : l'alternative au mot-clé. Toujours visible,
+            // parce qu'elle sert dans tous les modes, même quand le service écoute.
+            Button(
+                onClick = onCaptureCommand,
+                enabled = uiState.serviceRunning,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.capture_button))
+            }
 
             RecognitionCard(listening = uiState.listening, wakeWord = uiState.wakeWord)
 

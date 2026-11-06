@@ -50,6 +50,7 @@
 
     <!-- ===== Reconnaissance vocale ===== -->
     <string name="recognition_title">Reconnaissance vocale</string>
+    <string name="capture_button">Parler maintenant</string>
     <string name="recognition_status_idle">Inactif</string>
     <string name="recognition_status_preparing">Préparation du modèle…</string>
     <string name="recognition_status_waiting_wake_word">En veille — dites « %1$s »</string>

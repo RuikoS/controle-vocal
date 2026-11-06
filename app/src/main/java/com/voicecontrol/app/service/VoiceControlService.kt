@@ -94,6 +94,11 @@ class VoiceControlService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Déclenchement manuel depuis le bouton de l'écran.
+        if (intent?.getBooleanExtra(EXTRA_CAPTURE, false) == true) {
+            controller?.captureCommand()
+        }
+
         // L'écran peut demander l'exécution d'une action choisie parmi les
         // propositions : le service est le seul à pouvoir agir réellement.
         intent?.getStringExtra(EXTRA_ACTION)?.let { actionName ->
@@ -121,6 +126,9 @@ class VoiceControlService : Service() {
     companion object {
         /** Action choisie sur l'écran, transmise au service. */
         private const val EXTRA_ACTION = "extra_action"
+
+        /** Demande de capture manuelle, déclenchée par un bouton. */
+        private const val EXTRA_CAPTURE = "extra_capture"
 
         /**
          * État observable du service, exposé à l'UI.
@@ -156,6 +164,18 @@ class VoiceControlService : Service() {
         fun perform(context: Context, action: VoiceAction) {
             val intent = Intent(context, VoiceControlService::class.java)
                 .putExtra(EXTRA_ACTION, action.name)
+            context.startService(intent)
+        }
+
+        /**
+         * Demande une capture de commande, sans passer par le mot-clé.
+         *
+         * C'est ce que fait le bouton de l'écran : le service bascule sur le
+         * moteur de commande le temps d'une phrase, puis revient en veille.
+         */
+        fun captureCommand(context: Context) {
+            val intent = Intent(context, VoiceControlService::class.java)
+                .putExtra(EXTRA_CAPTURE, true)
             context.startService(intent)
         }
     }

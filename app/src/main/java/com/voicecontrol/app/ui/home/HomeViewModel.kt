@@ -168,6 +168,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
+     * Déclenchement manuel d'une commande, sans mot-clé.
+     * Passe par le service, seul à disposer des moteurs d'écoute.
+     */
+    fun captureCommand() {
+        VoiceControlService.captureCommand(getApplication())
+    }
+
+    /**
      * Apprend qu'une phrase non comprise correspond à une action.
      *
      * Aucune confirmation supplémentaire : l'utilisateur vient d'exprimer ce que

@@ -124,6 +124,21 @@ class VoiceListeningController(
         execute(VoiceIntent.Execute(action), transcript = "", learnedPhrase = null)
     }
 
+    /**
+     * Déclenchement manuel, depuis un bouton de l'écran.
+     *
+     * C'est l'alternative au mot-clé : on ouvre la capture de commande sans rien
+     * avoir à prononcer. Utile dans le bruit, quand le mot-clé est peu fiable,
+     * ou simplement quand on ne veut pas parler pour activer.
+     */
+    fun captureCommand() {
+        if (!started) return
+        // En écoute permanente, le moteur écoute déjà : il n'y a rien à déclencher.
+        if (activationMode.value == ActivationMode.AlwaysListening) return
+
+        enterCommandMode()
+    }
+
     // ------------------------------------------------------------------
     // Passation de micro entre les deux moteurs
     // ------------------------------------------------------------------
